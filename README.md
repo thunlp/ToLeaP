@@ -1,9 +1,11 @@
 # BodhiAgent
 ![BodhiAgent](https://img.shields.io/badge/BodhiAgent-8A2BE2)
-![GitHub stars](https://img.shields.io/github/stars/hytn/bodhiagent?style=social)
-![GitHub forks](https://img.shields.io/github/forks/hytn/bodhiagent?style=social)
-![GitHub license](https://img.shields.io/github/license/hytn/bodhiagent)
-![GitHub repo size](https://img.shields.io/github/repo-size/hytn/bodhiagent)
-![GitHub top language](https://img.shields.io/github/languages/top/hytn/bodhiagent)
+![GitHub stars](https://img.shields.io/github/stars/Hytn/BodhiAgent?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Hytn/BodhiAgent?style=social)
+![GitHub license](https://img.shields.io/github/license/Hytn/BodhiAgent)
+![GitHub repo size](https://img.shields.io/github/repo-size/Hytn/BodhiAgent)
+![GitHub top language](https://img.shields.io/github/languages/top/Hytn/BodhiAgent)
+<!-- [![BodhiAgent Logo](./figs/meditation.png)](https://github.com/Hytn/BodhiAgent) -->
 
-The next generation of foundation agent with tool-using and cooperative capability.
+An agent capable of learning how to learn and using what it learns.
+
