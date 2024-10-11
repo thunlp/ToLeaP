@@ -1,5 +1,4 @@
 from cfg.config import Config
-from openai import OpenAI
 from utils.llm import Message
 
 cfg = Config()
