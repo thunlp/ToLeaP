@@ -89,31 +89,3 @@ class Logger:
             info = f"{LogColors.RED}{LogColors.BOLD}Error:{LogColors.END}{arg}"
             self.logger.error(info)
 
-    def log_message(self, messages: list[dict[str, str]]) -> None:
-        """
-        messages is some info like this  [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
-        ]
-        """
-        with formatting_log(self.logger, "GPT Messages"):
-            for m in messages:
-                info = f"""
-                    {LogColors.MAGENTA}{LogColors.BOLD}Role:{LogColors.END}
-                    {LogColors.CYAN}{m['role']}{LogColors.END}\n
-                    {LogColors.MAGENTA}{LogColors.BOLD}Content:{LogColors.END}
-                    {LogColors.CYAN}{m['content']}{LogColors.END}\n
-                """
-                self.logger.info(info)
-
-    def log_response(self, response: str) -> None:
-        with formatting_log(self.logger, "GPT Response"):
-            info = f"{LogColors.CYAN}{response}{LogColors.END}\n"
-            self.logger.info(info)
-
