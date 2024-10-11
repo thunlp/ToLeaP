@@ -14,8 +14,7 @@ class Config:
     api_key = os.getenv("API_KEY")
     api_model = os.getenv("API_MODEL")
     database_url = os.getenv("DATABASE_URL")
+    data_folder_path = os.getenv("DATA_FOLDER_PATH")
     max_past_message_include = 128000
     default_system_prompt = ''
-
-
 

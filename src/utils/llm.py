@@ -1,31 +1,7 @@
-
-
-# 留下掌握的，去掉没掌握的，写出通过api取用信息的各种功能
-
-
-import datetime
-import hashlib
-import importlib
-import json
-import multiprocessing
-import os
-import re
-import sqlite3
-import ssl
-import time
-import urllib.request
-import uuid
-from copy import deepcopy
-from pathlib import Path
-from typing import List, Optional, Tuple, Union, Any, Literal
-from datetime import datetime, timezone
-
-import numpy as np
 import tiktoken
-from scipy.spatial.distance import cosine
 
 from cfg.config import Config
-from utils.log import Logger, LogColors
+from utils.log import Logger
 
 try:
     import openai
