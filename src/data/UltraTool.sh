@@ -1,10 +1,10 @@
-git clone https://github.com/JoeYing1019/UltraTool.git
-cd UltraTool
+git clone https://github.com/HowieHwong/MetaTool.git
+cd MetaTool
 
 shopt -s extglob
-rm -rf !(data)
+rm -rf !(dataset)
 
-mv data ../../BodhiAgent/src/UltraTool
+mv data ../../BodhiAgent/src/MetaTool
 
 cd ..
-rm -rf UltraTool
+rm -rf MetaTool
