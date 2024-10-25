@@ -1,4 +1,4 @@
-git clone https://github.com/HowieHwong/RestGPT.git
+git clone https://https://github.com/Yifan-Song793/RestGPT.git
 cd RestGPT
 
 shopt -s extglob
