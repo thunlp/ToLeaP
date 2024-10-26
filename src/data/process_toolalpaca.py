@@ -85,6 +85,7 @@ def process_train(filename, output_filename, is_eval):
                     continue
                 try:
                     observation = steps[1].split("Response: ")[1]
+                    observation = json.dumps(json.loads(observation)['response'])
                 except:
                     observation = "{}"
                 call_name = steps[0][0]
