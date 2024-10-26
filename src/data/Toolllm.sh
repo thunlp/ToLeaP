@@ -7,4 +7,4 @@ cd toolllm_data
 # Toolllama_G123_defs_train.json is the main training data for ToolLLaMA
 # It does not conform to the data format of Sharegpt Format Supervised Fine Tuning Dataset
 # Running raw_to-factory.py can convert it to the data format of Sharegpt Format - Supervised Fine Tuning Dataset
-python ../raw_to_factory.py
+python ../Toolllm_sharegpt.py
