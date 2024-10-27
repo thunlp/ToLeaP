@@ -14,5 +14,6 @@ to download t-eval dataset
 ```
 cd BodhiAgent/src
 ./data/teval.sh
-cd data/teval
+cd data
+run teval_sharegpt.py 
 ```
