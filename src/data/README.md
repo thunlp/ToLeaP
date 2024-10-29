@@ -17,3 +17,10 @@ cd BodhiAgent/src
 cd data
 run teval_sharegpt.py 
 ```
+
+#RoTBench
+
+to download RoTBench
+git clone https://github.com/Junjie-Ye/RoTBench.git
+cd RoTBench\Data
+python RoTbench.py
