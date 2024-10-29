@@ -20,9 +20,16 @@ run teval_sharegpt.py
 
 #RoTBench
 
-to download RoTBench
+to download RoTBench and deal Data
 ```
-git clone https://github.com/Junjie-Ye/RoTBench.git
-cd RoTBench\Data
-python RoTbench.py
+cd ./BodhiAgent/src/data
+./RoTBench.sh
+```
+
+#Toollens
+
+to download Toollens and deal Datasets
+```
+cd ./BodhiAgent/src/data
+./Toollens.sh
 ```
