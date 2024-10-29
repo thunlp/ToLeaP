@@ -1,15 +1,21 @@
 
 #dowload RoTBench
 git clone https://github.com/Junjie-Ye/RoTBench.git
+
+mkdir RoTBenchData
+
 cd RoTBench 
 
 #Retain Data and Delete others
 shopt -s extglob
 rm -rf !(Data)
 
-#Move Data
-mv Data ../data/RoTBench/
+cd Data
+
+#Run Python file
+python ../../RoTBench_sharegpt.py
+
 
 #Delete RoTBench
-cd ..
+cd ../../
 rm -rf RoTBench
