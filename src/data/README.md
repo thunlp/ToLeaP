@@ -41,6 +41,7 @@ To download **RestGPT** datasets and transform them into sharegpt format:
 bash MetaTool.sh
 ```
 The sharegpt format datasets `spotify_processed.json` and `tmdb_processed.json` will be found under the folder `data/sft_data`.
+
 To download the **Toolllm** dataset and transform it into sharegpt format:
 ```
 bash toolllm.sh
