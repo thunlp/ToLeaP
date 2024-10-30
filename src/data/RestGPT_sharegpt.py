@@ -44,8 +44,8 @@ def transform_data(input_file, output_file):
 
 if __name__ == "__main__":
     file_pairs = [
-        ('RestGPT_data/spotify.json', 'RestGPT_data/spotify_processed.json'),
-        ('RestGPT_data/tmdb.json', 'RestGPT_data/tmdb_processed.json') 
+        ('RestGPT_data/spotify.json', 'sft_data/spotify_processed.json'),
+        ('RestGPT_data/tmdb.json', 'sft_data/tmdb_processed.json') 
     ]
     
     for input_file, output_file in file_pairs:
