@@ -1,3 +1,4 @@
+sed -i 's/\r$//' MetaTool.sh
 git clone https://github.com/HowieHwong/MetaTool.git
 cd MetaTool
 
