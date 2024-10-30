@@ -8,6 +8,11 @@ try:
 except ImportError:
     Logger().warning("openai is not installed.")
 
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except ImportError:
+    Logger().warning("transformers is not installed in the current env.")
+
 
 class Message:
     def __init__(
@@ -18,12 +23,16 @@ class Message:
     ) -> None:
         self.cfg = Config()
 
-        self.api_key = api_key if api_key is not None else self.cfg.api_key
-        self.api_model = api_model if api_model is not None else self.cfg.api_model
-        self.encoder = tiktoken.encoding_for_model(self.api_model)
-        self.database_url = database_url if database_url is not None else self.cfg.database_url
+        if self.cfg.use_llama:
+            self.model = AutoModelForCausalLM.from_pretrained(self.cfg.llama_model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.llama_model_path)
+        else:
+            self.api_key = api_key if api_key is not None else self.cfg.api_key
+            self.api_model = api_model if api_model is not None else self.cfg.api_model
+            self.encoder = tiktoken.encoding_for_model(self.api_model)
+            self.database_url = database_url if database_url is not None else self.cfg.database_url
 
-        self.client = openai.OpenAI(api_key=self.api_key, base_url=self.database_url)
+            self.client = openai.OpenAI(api_key=self.api_key, base_url=self.database_url)
 
     def build_messages(
         self,
@@ -64,21 +73,26 @@ class Message:
         functions=None,
         **kwargs,
     ):
-        messages = self.build_messages(user_prompt, system_prompt, former_messages, shrink_multiple_break)
-        if functions:
-            completion = self.client.chat.completions.create(model=self.api_model,
-                                                            messages=messages,
-                                                            functions=functions,
-                                                            function_call="auto")
-            response = completion.choices[0].message.content
-            if response is None:
-                response = [completion.choices[0].message.function_call.name,
-                            completion.choices[0].message.function_call.arguments]
-            return response
+        if self.cfg.use_llama:
+            inputs = self.tokenizer(user_prompt, return_tensors="pt")
+            outputs = self.model.generate(**inputs, max_length=1024)
+            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         else:
-            completion = self.client.chat.completions.create(model=self.api_model,
-                                                             messages=messages)
-            response = completion.choices[0].message.content
-            return response
+            messages = self.build_messages(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+            if functions:
+                completion = self.client.chat.completions.create(model=self.api_model,
+                                                                messages=messages,
+                                                                functions=functions,
+                                                                function_call="auto")
+                response = completion.choices[0].message.content
+                if response is None:
+                    response = [completion.choices[0].message.function_call.name,
+                                completion.choices[0].message.function_call.arguments]
+                return response
+            else:
+                completion = self.client.chat.completions.create(model=self.api_model,
+                                                                messages=messages)
+                response = completion.choices[0].message.content
+        return response
 
 
