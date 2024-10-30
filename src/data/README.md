@@ -29,3 +29,15 @@ To download **Toollens** and deal with Datasets
 cd ./BodhiAgent/src/data
 ./Toollens.sh
 ```
+
+To download **MetaTool** dataset and transform it into sharegpt format:
+```
+bash MetaTool.sh
+```
+The sharegpt format dataset `multi_tool_query_golden.json` will be found under the folder `data/sft_data`.
+
+To download **RestGPT** dataset and transform it into sharegpt format:
+```
+bash MetaTool.sh
+```
+The sharegpt format datasets `spotify_processed.json` and `tmdb_processed.json` will be found under the folder `data/sft_data`.
