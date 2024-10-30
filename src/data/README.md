@@ -18,17 +18,13 @@ cd data
 run teval_sharegpt.py 
 ```
 
-#RoTBench
-
-to download RoTBench and deal Data
+To download **RoTBenc** and deal with Datasets
 ```
 cd ./BodhiAgent/src/data
 ./RoTBench.sh
 ```
 
-#Toollens
-
-to download Toollens and deal Datasets
+To download **Toollens** and deal with Datasets
 ```
 cd ./BodhiAgent/src/data
 ./Toollens.sh
