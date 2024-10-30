@@ -72,8 +72,11 @@ def modify_from_fields(data): # Modify key
 
 if __name__ == '__main__':
     # Path of input and output files
-    input_file = 'toolllm_data/toolllama_G123_dfs_train.json'        
-    output_file = 'toolllm_data/toolllm_processed.json'  
+    input_file = 'toolllm_data/toolllama_G123_dfs_train.json'     
+    output_dir = 'sft_data'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_file = os.path.join(output_dir, 'toolllm_processed.json')
 
     data = load_json(input_file)
 
