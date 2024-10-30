@@ -22,7 +22,7 @@ rm -rf RoTBench
 
 #move data to sft_data
 mkdir -p sft_data
-cp -r RoTBenchData RoTBench
+cp -r RoTBenchData sft_data
 rm -rf RoTBenchData
 
 

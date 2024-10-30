@@ -23,5 +23,5 @@ rm -rf COLT
 
 #move data to sft_data
 mkdir -p sft_data
-cp -r ToolLensData RoTBench
+cp -r ToolLensData sft_data
 rm -rf ToolLensData
