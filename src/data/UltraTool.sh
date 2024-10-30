@@ -1,3 +1,4 @@
+sed -i 's/\r$//' UltraTool.sh
 git clone https://github.com/JoeYing1019/UltraTool.git
 cd UltraTool
 
