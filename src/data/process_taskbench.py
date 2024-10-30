@@ -127,5 +127,5 @@ if __name__ == "__main__":
     print(f"Errors: {errs}")
     print(f"Total: {len(all_datapoints)}")
     
-    with open('taskbench_data.json', 'w') as f:
+    with open('sft_data/taskbench_data.json', 'w') as f:
         json.dump(all_datapoints, f, indent=2)
