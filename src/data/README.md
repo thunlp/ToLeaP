@@ -6,7 +6,7 @@ To download **gorllia/bfcl** dataset
 cd BodhiAgent/src
 ./data/bfcl.sh
 cd data
-Run bfcl_sharegpt.py --{which json} to convert to stf dataset or just 'all'
+run bfcl_sharegpt.py --{which json} to convert to stf dataset or just 'all'
 ```
 
 To download **t-eval** dataset
