@@ -6,7 +6,7 @@ shopt -s extglob
 
 rm -rf !(data)
 
-mv data ../data/teval
+mv data ../../data/teval
 
 cd ..
 
