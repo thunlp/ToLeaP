@@ -63,7 +63,7 @@ for current_dir in folders:
     for file_path in tsv_files:
         try:
             file_name, file_extension = os.path.splitext(os.path.basename(file_path))
-            file_name_N = new_dir+ "\\new_" + str(current_dir) + file_name + ".json"
+            file_name_N = new_dir+ "//new_" + str(current_dir) + file_name + ".json"
             print("Data will be saved as:",file_name_N)
             dataNew = transferSharegpt(file_path)
             with open(file_name_N, 'w', encoding='utf-8') as f:

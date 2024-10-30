@@ -19,3 +19,10 @@ python ../../RoTBench_sharegpt.py
 #Delete RoTBench
 cd ../../
 rm -rf RoTBench
+
+#move data to sft_data
+mkdir -p sft_data
+cp -r RoTBenchData RoTBench
+rm -rf RoTBenchData
+
+
