@@ -4,7 +4,7 @@ cd MetaTool
 shopt -s extglob
 rm -rf !(dataset)
 
-mv data ../../BodhiAgent/src/MetaTool
+mv dataset ../../data/MetaTool_data
 
 cd ..
 rm -rf MetaTool
