@@ -1,3 +1,4 @@
+sed -i 's/\r$//' RestGPT.sh
 git clone https://github.com/Yifan-Song793/RestGPT.git
 cd RestGPT
 
