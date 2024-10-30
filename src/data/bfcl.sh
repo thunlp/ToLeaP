@@ -6,7 +6,7 @@ rm -rf !(berkeley-function-call-leaderboard)
 cd berkeley-function-call-leaderboard || exit
 rm -rf !(data)
 
-mv data ../../../data/bfcl_data
+mv data ../../../data/bfcl
 
 cd ../..
 rm -rf gorilla
