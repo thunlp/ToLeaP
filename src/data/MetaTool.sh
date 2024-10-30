@@ -6,8 +6,7 @@ shopt -s extglob
 cd dataset
 cd data
 
-mkdir -p ../../../../data/sft_data
-mv multi_tool_query_golden.json ../../../../data/sft_data
+mv multi_tool_query_golden.json ../../../../data/MetaTool_data
 
 cd ../../..
 rm -rf MetaTool
