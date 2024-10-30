@@ -4,7 +4,7 @@ cd UltraTool
 shopt -s extglob
 rm -rf !(data)
 
-mv data ../../BodhiAgent/src/UltraTool_data
+mv data ../../data/UltraTool_data
 
 cd ..
 rm -rf UltraTool
