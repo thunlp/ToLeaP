@@ -70,7 +70,7 @@ def process_train(filename, output_filename, is_eval):
                 call_input = golden_answer[0]["Action_Input"]
                 try:
                     train_factory.append({
-                        "conversation": [
+                        "conversations": [
                             {"from": "human", "value": question},
                             {"from": "function_call", "value": json.dumps({"name": call_name, "arguments": json.loads(call_input)})}
                         ]
@@ -93,7 +93,7 @@ def process_train(filename, output_filename, is_eval):
                 final_output = golden_answer["output"]
                 try:
                     train_factory.append({
-                        "conversation": [
+                        "conversations": [
                             {"from": "human", "value": question},
                             {"from": "function_call", "value": json.dumps({"name": call_name, "arguments": json.loads(call_input)})},
                             {"from": "observation", "value": observation},
