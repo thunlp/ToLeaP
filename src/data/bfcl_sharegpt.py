@@ -3,6 +3,8 @@ import sys
 import os
 
 
+import json
+
 def sft_simple(input_file, output_file, ground_truth_file):
     with open(input_file, 'r') as f:
         data = [json.loads(line) for line in f]
@@ -23,13 +25,22 @@ def sft_simple(input_file, output_file, ground_truth_file):
                 if q["role"] == "user":
                     conversations.append({"from": "human", "value": q["content"]})
         
-        # Add function_call with ground truth JSON only once
-        ground_truth = ground_truth_data.get(entry["id"], {}).get("ground_truth", [{}])[0]
-        conversations.append({"from": "function_call", "value": json.dumps(ground_truth)})
-        # Add corresponding observation as empty
-        conversations.append({"from": "observation", "value": ""})
-        # Add GPT response with ground truth
-        conversations.append({"from": "gpt", "value": json.dumps(ground_truth)})
+        # Retrieve ground truth for the current entry
+        ground_truth_entry = ground_truth_data.get(entry["id"], {}).get("ground_truth", [{}])[0]
+        
+        # Dynamically extract the function name and arguments
+        if ground_truth_entry:
+            function_name = list(ground_truth_entry.keys())[0]
+            function_arguments = ground_truth_entry[function_name]
+            function_call_value = {
+                "name": function_name,
+                "arguments": function_arguments
+            }
+            conversations.append({"from": "function_call", "value": json.dumps(function_call_value)})
+            # Add corresponding observation as empty
+            conversations.append({"from": "observation", "value": ""})
+            # Add GPT response with ground truth in the desired format
+            conversations.append({"from": "gpt", "value": json.dumps(function_call_value)})
         
         # Add tool description with entire function JSON
         tool_description = json.dumps(entry.get("function", []))
@@ -43,6 +54,7 @@ def sft_simple(input_file, output_file, ground_truth_file):
     
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
+
 
 def sft_multi(input_file, output_file, ground_truth_file):
     class_to_file_mapping = {
@@ -114,14 +126,14 @@ def sft_multi(input_file, output_file, ground_truth_file):
 if __name__ == "__main__":
     input_prefix = sys.argv[1]
     if input_prefix == 'all':
-        sft_simple(f'bfcl/BFCL_v3_simple.json', f'stf_simple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel.json', f'stf_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_multiple.json', f'stf_multiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel_multiple.json', f'stf_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'stf_live_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'stf_live_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'stf_live_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'stf_live_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
-        sft_multi('bfcl/BFCL_v3_multi_turn_base.json', 'stf_multo_base.json', 'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
+        sft_simple(f'bfcl/BFCL_v3_simple.json', f'sft_data/sft_bfclsimple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
+        sft_simple(f'bfcl/BFCL_v3_parallel.json', f'sft_data/sft_bfclparallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
+        sft_simple(f'bfcl/BFCL_v3_multiple.json', f'sft_data/sft_bfclmultiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/stf_bfclparallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'sft_data/sft_bfcllive_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
+        sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/sft_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/stf_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
+        # sft_multi('bfcl/BFCL_v3_multi_turn_base.json', 'sft_data/sft_bfclmulti_base.json', 'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')
