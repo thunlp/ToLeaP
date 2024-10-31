@@ -114,14 +114,14 @@ def sft_multi(input_file, output_file, ground_truth_file):
 if __name__ == "__main__":
     input_prefix = sys.argv[1]
     if input_prefix == 'all':
-        sft_simple(f'bfcl/BFCL_v3_simple.json', f'stf_simple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel.json', f'stf_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_multiple.json', f'stf_multiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel_multiple.json', f'stf_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'stf_live_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'stf_live_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'stf_live_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'stf_live_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
-        sft_multi('bfcl/BFCL_v3_multi_turn_base.json', 'stf_multo_base.json', 'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
+        sft_simple(f'bfcl/BFCL_v3_simple.json', f'sft_data/stf_bfclsimple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
+        sft_simple(f'bfcl/BFCL_v3_parallel.json', f'sft_data/stf_bfclparallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
+        sft_simple(f'bfcl/BFCL_v3_multiple.json', f'sft_data/stf_bfclmultiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/stf_bfclparallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'sft_data/stf_bfcllive_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/stf_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
+        sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/stf_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
+        sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/stf_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
+        sft_multi('bfcl/BFCL_v3_multi_turn_base.json', 'sft_data/stf_bfclmulti_base.json', 'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')

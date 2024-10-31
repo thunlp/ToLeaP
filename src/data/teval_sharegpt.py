@@ -178,8 +178,8 @@ def convert_to_sft_format_reason(input_file, output_file):
         json.dump(result, f, indent=2)
 
 if __name__ == "__main__":
-    convert_to_sft_format_reason('teval/reason_str_v2.json', 'sft_teval_reason.json')
-    convert_to_sft_format_retrieve('teval/retrieve_str_v2.json', 'stf_teval_retrieve.json')
-    convert_to_sft_format_plan('teval/plan_json_v2.json', 'stf_teval_plan.json')
-    convert_to_sft_format_instruct('teval/instruct_v2.json', 'stf_teval_ins.json')
+    convert_to_sft_format_reason('teval/reason_str_v2.json', 'sft_data/sft_teval_reason.json')
+    convert_to_sft_format_retrieve('teval/retrieve_str_v2.json', 'sft_data/stf_teval_retrieve.json')
+    convert_to_sft_format_plan('teval/plan_json_v2.json', 'sft_data/stf_teval_plan.json')
+    convert_to_sft_format_instruct('teval/instruct_v2.json', 'sft_data/stf_teval_ins.json')
 
