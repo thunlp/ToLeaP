@@ -1,23 +1,38 @@
 import os
 import json
 import glob
+import copy
+def insert(data, thought, index):
+    human = {"from":"human","value":""}
+    thought = {"from":"gpt","value":thought}
+    
+    data["conversations"].insert(index, thought)
+    index +=1
+    data["conversations"].insert(index, human)
+  
 
 def transferSharegpt(data):
     # dataNew={}
     for conversationIndex in data:
         del conversationIndex["id"]
         del conversationIndex["scenario"]
-        rawData=conversationIndex["conversations"]
+        rawData=copy.deepcopy(conversationIndex["conversations"])
         # print(type(rawData))
         #start to modify
-        for i in rawData:   
-            if i["from"] == "assistant":
-                i["from"] = "gpt"
-            elif i["from"] == "user":
-                i["from"] = "human"
-            elif i["from"] == "system":
-                conversationIndex["system"] = i["value"]
-                del conversationIndex["conversations"][0]
+        for i in range(len(rawData)):   
+            if rawData[i]["from"] == "assistant":
+                index = 2
+                #  try to deal value
+                for thought in rawData[i]["value"]:
+                    insert(conversationIndex, thought, index)
+                    index +=2
+                conversationIndex["conversations"][i]["from"] = "gpt"
+            elif rawData[i]["from"] == "user":
+                conversationIndex["conversations"][i]["from"] = "human"
+            elif rawData[i]["from"] == "system":
+                conversationIndex["system"] = rawData[i]["value"]
+        del conversationIndex["conversations"][0]
+        del conversationIndex["conversations"][-1]
     return data
 
 def transferSharegptthrid(data):
