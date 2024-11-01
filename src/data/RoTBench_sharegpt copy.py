@@ -79,28 +79,27 @@ if __name__ == "__main__":
 
     # 获取当前文件夹和当前文件夹下所有文件夹
     current_dir = os.getcwd()
-    save_dir = "../../RoTBenchData"
+    save_dir = "../../RoTBenchData/"
     folders = [f for f in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, f))]
     # 获取所有的 .json 文件
     for current_dir in folders:
         json_files =  glob.glob(os.path.join(current_dir, "*.json"))
         # 读取每个 JSON 文件的内容
         for file_path in json_files:
-              
-                with open(file_path, 'r', encoding='utf-8') as f: 
-                    data = json.load(f)
-                    # 处理 first turn 文件
-                    if current_dir == "First_Turn":
-                        file_name_N = save_dir+ "//first_turn_new_" + os.path.basename(file_path)
-                        try:
-                            dataNew = transferSharegpt(data)
-                            for wrong in dataNew:
-                                del wrong["conversations"][-1]
-                            with open(file_name_N, 'w', encoding='utf-8') as f:
-                                json.dump(dataNew, f, ensure_ascii=False, indent=4)
-                                print(file_path, ":Finished")
-                        except:
-                            print(file_path, ":Failed")
+            with open(file_path, 'r', encoding='utf-8') as f: 
+                data = json.load(f)
+                # 处理 first turn 文件
+                if current_dir == "First_Turn":
+                    file_name_N = save_dir+ "first_turn_new_" + os.path.basename(file_path)
+                    try:
+                        dataNew = transferSharegpt(data)
+                        for wrong in dataNew:
+                            del wrong["conversations"][-1]
+                        with open(file_name_N, 'w', encoding='utf-8') as f:
+                            json.dump(dataNew, f, ensure_ascii=False, indent=4)
+                            print(file_path, ":Finished")
+                    except:
+                        print(file_path, ":Failed")
 
                     # 处理 thrid turn 文件
                     # if current_dir == "Third_Turn":
