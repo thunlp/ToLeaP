@@ -1,9 +1,11 @@
 import json
 import os
 
-# 指定输入和输出文件路径
-input_file = 'data/multi_tool_query_golden.json'   # 替换为您的输入文件路径
-output_file = 'MetaTool_processed.json' # 替换为您希望保存的输出文件路径
+input_file = 'MetaTool_data/multi_tool_query_golden.json' 
+output_dir = 'sft_data'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+output_file = os.path.join(output_dir, 'MetaTool_processed.json')
 
 def load_json(file_path):
     if not os.path.exists(file_path):
@@ -18,7 +20,6 @@ def save_json(data, file_path):
     print(f"Saved to: {file_path}")
 
 def transform_data(data):
-
     transformed = []
     for index, item in enumerate(data):
         query = item.get("query", "")
@@ -31,7 +32,7 @@ def transform_data(data):
             },
             {
                 "from": "gpt",
-                "value": json.dumps(tools, ensure_ascii=False)  # 工具列表转换为字符串
+                "value": json.dumps(tools, ensure_ascii=False)  # Convert tool list to string
             },
         ]
         

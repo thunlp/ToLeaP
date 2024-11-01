@@ -36,7 +36,7 @@ else:
 
 # 获取当前文件夹和当前文件夹下所有文件夹
 current_dir = os.getcwd()
-new_dir = "../../ToolLensData"
+new_dir = "../../sft_data"
 folders = [f for f in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, f))]
 
 #读取Tsv文件
