@@ -34,7 +34,7 @@ To download the **MetaTool** dataset and transform it into sharegpt format:
 ```
 bash MetaTool.sh
 ```
-The sharegpt format dataset `multi_tool_query_golden.json` will be found under the folder `data/sft_data`.
+The sharegpt format dataset `MetaTool_processed.json` will be found under the folder `data/sft_data`.
 
 To download **RestGPT** datasets and transform them into sharegpt format:
 ```
