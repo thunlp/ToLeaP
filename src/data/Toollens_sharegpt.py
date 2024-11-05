@@ -18,7 +18,7 @@ def transferSharegpt(file_path):
                         break
                 answer = {
                     "from":"gpt",
-                    "value": corpus_data[int(parts[1])] 
+                    "value": corpus_data[int(parts[1])]["text"] 
                 }
                 oneData = {"conversations":[query, answer]}
                 data.append(oneData)
@@ -36,7 +36,7 @@ else:
 
 # 获取当前文件夹和当前文件夹下所有文件夹
 current_dir = os.getcwd()
-new_dir = "../../sft_data"
+new_dir = "../../sft_data/ToolLensData"
 folders = [f for f in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, f))]
 
 #读取Tsv文件
@@ -68,9 +68,10 @@ for current_dir in folders:
             dataNew = transferSharegpt(file_path)
             with open(file_name_N, 'w', encoding='utf-8') as f:
                         json.dump(dataNew, f, ensure_ascii=False, indent=4)
-                        print(file_path, ":Finished")
+                        print(file_name_N, ":Finished")
+                   
         except:
-                print(file_path, ":Failed")                
+                print(file_name_N, ":Failed")                
         
 
 
