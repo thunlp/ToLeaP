@@ -108,7 +108,8 @@ if __name__ == '__main__':
         # elif args.model_type.startswith('claude'):
         #     llm = ClaudeAPI(args.model_type)
         elif args.model_type == 'hf':
-            meta_template = meta_template_dict.get(args.meta_template)
+            # meta_template = meta_template_dict.get(args.meta_template)
+            meta_template = meta_template_dict.get(args.meta_template,meta_template_dict.get('llama3'))
             if "chatglm" in args.model_display_name:
                 llm = HFTransformerChat(path=args.model_path, meta_template=meta_template)
             else:

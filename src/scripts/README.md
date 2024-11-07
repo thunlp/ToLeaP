@@ -6,3 +6,9 @@ RoTBench adapts three metrics, **Tool Selection (TS)**, **Parameter identificati
 Input format and Expected Output format
 .....
 ```
+ 
+ **Teval Evaluation**  
+ ```
+ sh test_all_en.sh hf $HF_PATH $HF_MODEL_NAME $META_TEMPLATE
+ eg: sh test_all_en.sh hf \workspace 3.1-8B-INS llama3 should work
+ ```
