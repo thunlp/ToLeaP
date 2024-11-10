@@ -69,7 +69,7 @@ for current_dir in folders:
             with open(file_name_N, 'w', encoding='utf-8') as f:
                         json.dump(dataNew, f, ensure_ascii=False, indent=4)
                         print(file_name_N, ":Finished")
-                   
+            break
         except:
                 print(file_name_N, ":Failed")                
         
