@@ -1,5 +1,5 @@
-from formatter import format_sharegpt_tools
-from template import TOOLALPACA_SYSTEM, TOOLALPACA_EVAL
+from utils.formatter import format_sharegpt_tools
+from utils.template import TOOLALPACA_SYSTEM, TOOLALPACA_EVAL
 from argparse import ArgumentParser
 from vllm import LLM, SamplingParams
 from tqdm import tqdm
@@ -76,7 +76,12 @@ if __name__ == "__main__":
         eval_prompt = eval_template.substitute(documentation=format_sharegpt_tools(instance["tools"]), instruction=result["question"], standard=result["gold_answer"], solution=solution, analysis="Brief analysis of the solution against the gold answer.")
         msg = [{"role": "user", "content": eval_prompt}]
         # Use gpt-4o to evaluate
-        response = client.chat.completions.create(model="gpt-4o", messages=msg, temperature=0, max_tokens=1024)
+        response = None
+        while response is None:
+            try:
+                response = client.chat.completions.create(model="gpt-4o", messages=msg, temperature=0, max_tokens=1024)
+            except Exception as e:
+                print(f"Error occurred during evaluation: {str(e)}. Retrying...")
         # Extract evaluation results from GPT-4's response
         eval_text = response.choices[0].message.content
         process_correct = "No"
