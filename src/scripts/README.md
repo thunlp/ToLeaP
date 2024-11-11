@@ -7,8 +7,12 @@ RoTBench adapts three metrics, **Tool Selection (TS)**, **Parameter identificati
 **Parameter identification (PI)** represents whether agent can fill right parameter name into function.
 **Content filling (CF)** denotes whether agent can fill corrent content into corresponding parameters.
 
-Input format include two files, **test_file** and **prediction_file**, which test_file should follow share_gpt file and prediction file should follow generated_predictions file format.
+Input format include two files, **test_file** and **prediction_file**, which test_file should follow share_gpt file(.json) and prediction file should follow generated_predictions file format(.jsonl).
 
+Run RoTBench Evaluation:
+```
+python src/scripts/RoTBench_eval.py --test_file PATH --answer_file PATH
+```
  
  **Teval Evaluation**  (need fix, haven't finished yet)
  ```
