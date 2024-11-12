@@ -25,8 +25,8 @@ def parse_assistant_response(text):
         for part in parts:
             if part.startswith('Action:'):
                 result['action'] = part.replace('Action:', '').strip()
-            elif part.startswith('Action input:'):
-                result['action_input'] = part.replace('Action input:', '').strip()
+            elif part.startswith('Action Input:'):
+                result['action_input'] = part.replace('Action Input:', '').strip()
     except: # return empty
         pass
     
