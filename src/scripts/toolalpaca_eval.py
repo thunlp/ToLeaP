@@ -1,22 +1,18 @@
-from utils.formatter import format_sharegpt_tools
-from utils.template import TOOLALPACA_SYSTEM, TOOLALPACA_EVAL
 from argparse import ArgumentParser
-from vllm import LLM, SamplingParams
+from utils.template import TOOLALPACA_EVAL
 from tqdm import tqdm
 from openai import OpenAI
 from string import Template
 import json
+import os
 
-client = OpenAI(api_key="", base_url="https://toollearning.cn/v1")
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"], base_url="https://toollearning.cn/v1")
 
 parser = ArgumentParser()
-parser.add_argument("--eval_file", type=str, default="../data/sft_data/toolalpaca_eval_real_sharegpt.json")
+# Llama Factory Sharegpt format, default is generated_predictions.jsonl
+parser.add_argument("--eval_file", type=str, required=True)
+parser.add_argument("--data_file", type=str, default="../data/sft_data/toolalpaca_eval_real_sharegpt.json")
 parser.add_argument("--model", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
-
-def build_prompt(instance):
-    tool_text = format_sharegpt_tools(instance["tools"])
-    instruction = instance["conversations"][0]["value"]
-    return TOOLALPACA_SYSTEM.format(tools=tool_text, instruction=instruction)
 
 def parse_assistant_response(text):
     # Initialize empty dictionary for results
@@ -27,53 +23,55 @@ def parse_assistant_response(text):
     
     try:
         for part in parts:
-            if part.startswith('ASSISTANT Thought:'):
-                result['thought'] = part.replace('ASSISTANT Thought:', '').strip()
-            elif part.startswith('ASSISTANT Action:'):
-                result['action'] = part.replace('ASSISTANT Action:', '').strip()
-            elif part.startswith('ASSISTANT Action Input:'):
-                # Parse the JSON-like string into a string
-                result['action_input'] = part.replace('ASSISTANT Action Input:', '').strip()
+            if part.startswith('Action:'):
+                result['action'] = part.replace('Action:', '').strip()
+            elif part.startswith('Action input:'):
+                result['action_input'] = part.replace('Action input:', '').strip()
     except: # return empty
         pass
     
     return result
 
+def get_tools_text(text):
+    start_marker = "You have access to the following tools:"
+    end_marker = "Use the following format if using a tool:"
+    
+    try:
+        start_idx = text.index(start_marker) + len(start_marker)
+        end_idx = text.index(end_marker)
+        return text[start_idx:end_idx].strip()
+    except ValueError:
+        return ""
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
-    sampling_params = SamplingParams(temperature=0, max_tokens=256)
-    llm = LLM(model=args.model)
-
-    eval_items = json.load(open(args.eval_file, "r"))
     eval_template = Template(TOOLALPACA_EVAL)
-    full_results = []
+    instances = json.load(open(args.data_file, "r"))
+    full_results = [json.loads(line) for line in open(args.eval_file, "r")]
     error_stats = {
-        "answer_generation_error": 0,
-        "evaluation_error": 0,
+        "parsing_error": 0,
         "correct": 0,
         "incorrect": 0,
         "uncertain": 0,
     }
 
-    # Generate responses
-    print("Generating responses...")
-    for instance in tqdm(eval_items):
-        system_prompt = build_prompt(instance)
-        msg = [{"role": "user", "content": system_prompt}]
-        vllm_msg = llm.llm_engine.tokenizer.tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=True)
-        response = llm.generate([vllm_msg], sampling_params=sampling_params)
-        response_text = response[0].outputs[0].text
-        full_results.append({"response": response_text, "question": instance["conversations"][0]["value"], "gold_answer": instance["conversations"][1]["value"]})
-
-    # Run evaluation
     print("Running evaluation...")
-    for result in tqdm(full_results):
-        answers = parse_assistant_response(result["response"])
+    for result, instance in tqdm(zip(full_results, instances)):
+        answers = parse_assistant_response(result["predict"])
         if len(answers) == 0:
-            error_stats["answer_generation_error"] += 1
+            error_stats["parsing_error"] += 1
             continue
         solution = "Function: {}\nAction Input: {}".format(answers["action"], answers["action_input"])
-        eval_prompt = eval_template.substitute(documentation=format_sharegpt_tools(instance["tools"]), instruction=result["question"], standard=result["gold_answer"], solution=solution, analysis="Brief analysis of the solution against the gold answer.")
+        gold_answer = json.loads(instance["conversations"][1]["value"])
+        gold_answer = "Function: {}\nAction Input: {}".format(gold_answer["name"], gold_answer["arguments"])
+        eval_prompt = eval_template.substitute(
+            documentation=get_tools_text(result["prompt"]), 
+            instruction=instance["conversations"][0]["value"], 
+            standard=gold_answer,
+            solution=solution, 
+            analysis="Brief analysis of the solution against the gold answer."
+        )
         msg = [{"role": "user", "content": eval_prompt}]
         # Use gpt-4o to evaluate
         response = None
