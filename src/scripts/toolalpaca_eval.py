@@ -12,7 +12,6 @@ parser = ArgumentParser()
 # Llama Factory Sharegpt format, default is generated_predictions.jsonl
 parser.add_argument("--eval_file", type=str, required=True)
 parser.add_argument("--data_file", type=str, default="../data/sft_data/toolalpaca_eval_real_sharegpt.json")
-parser.add_argument("--model", type=str, default="meta-llama/Llama-3.1-8B-Instruct")
 
 def parse_assistant_response(text):
     # Initialize empty dictionary for results
@@ -97,6 +96,6 @@ if __name__ == "__main__":
             error_stats["incorrect"] += 1
         else:
             error_stats["uncertain"] += 1
-        print(response.choices[0].message.content)
+        # print(response.choices[0].message.content)
     
     print(error_stats)

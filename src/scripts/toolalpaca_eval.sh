@@ -1,7 +1,10 @@
 # Arguments
-# --eval_file: the path to the evaluation file
-# --model: the model to use for evaluation
+# $1: the path to the evaluation file
+# $2: (optional) the path to the data file
 
-# Assuming evaluation files are ready
-python toolalpaca_eval.py --eval_file ../data/sft_data/toolalpaca_eval_real_sharegpt.json --model meta-llama/Llama-3.1-8B-Instruct
-python toolalpaca_eval.py --eval_file ../data/sft_data/toolalpaca_eval_simulated_sharegpt.json --model meta-llama/Llama-3.1-70B-Instruct
+# Run evaluation with provided arguments
+if [ -z "$2" ]; then
+    python toolalpaca_eval.py --eval_file "$1"
+else
+    python toolalpaca_eval.py --eval_file "$1" --data_file "$2"
+fi
