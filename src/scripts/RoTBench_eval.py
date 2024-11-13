@@ -115,11 +115,11 @@ def get_raven_action_input(action_input, test_action, config, version):
 def get_test_value(data):
   
     test_value = data["label"]
-    test_action = test_value[test_value.find("\"name\":") + 9: test_value.find("\"arguments\"")-3]
+    test_action = test_value[test_value.find("Action:") + 8: test_value.find("Action Input:")]
     if test_action[-1] == "\n":
         test_action = test_action[:-1]
     try:
-        test_action_input=test_value[test_value.find("\"arguments\":") + 13:-1]
+        test_action_input=test_value[test_value.find("Action Input:") + 14:]
         test_action_input = json.loads(test_action_input)
     except json.decoder.JSONDecodeError:
         return test_action, 0
@@ -262,9 +262,9 @@ def raven_eval(test_data, answer_data, version):
 
 def show_stats(check_list, max_len):
     print("Overall:")
-    print("Tool Selection: " + "{:.2f}".format(check_list[0][0] / max_len * 100))
-    print("Parameter Identification: " + "{:.2f}".format(check_list[1][0] / max_len * 100))
-    print("Content Filling: " + "{:.2f}".format(check_list[2][0] / max_len * 100))
+    print("Tool Selection: " + "{:.2f}".format(check_list[0][0] / max_len * 100 ) + "%")
+    print("Parameter Identification: " + "{:.2f}".format(check_list[1][0] / max_len * 100) + "%")
+    print("Content Filling: " + "{:.2f}".format(check_list[2][0] / max_len * 100) + "%")
 
     # # All Scenarios
     # scenarios = ["Text Generation", "Real-Time Search", "Data Understanding", "Personal Life", "Application Manipulation", "Information Retrieval", "Financial Transactions"]
@@ -280,7 +280,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/scripts/generated_predictions.jsonl")
+    parser.add_argument("--test_file", type=str, default="src/scripts/gp_first_turn_new_clean.jsonl")
     parser.add_argument("--answer_file", type=str, default="src/scripts/first_turn_new_clean.json")
     args = parser.parse_args()
 
