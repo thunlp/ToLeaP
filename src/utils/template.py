@@ -1,26 +1,3 @@
-TOOLALPACA_SYSTEM = """A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions with the help of some tools.
-You have access to the following tools:
-
-{tools}
-
-The chat follows this format:
-USER: the user's question
-ASSISTANT Thought: the assistant's inner thought about what to do next 
-ASSISTANT Action: the action to take, must be one of [getDetails, sendHttpRequest, getClientRequestData, testProxyHeaders, simulateStatusCode].
-ASSISTANT Action Input: the input for the action, in JSON format.
-ASSISTANT Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-ASSISTANT Thought: summarize the information gathered
-ASSISTANT Response: the final response to the user
-USER: user's next question
-...
-
-Begin!
-
-USER:{instruction}
-ASSISTANT Thought: 
-"""
-
 TOOLALPACA_EVAL = """Given the documentation of a REST API and a task instruction, I need you to evaluate whether the solution provided by my AI assistant aligns with the standard answer. 
 
 Follow these guidelines:
