@@ -1,5 +1,6 @@
 import json
 import re
+import argparse
 
 def ast_checker(data_entry):
     label = json.loads(data_entry['label'])
@@ -326,10 +327,17 @@ def save_results_to_file(results, output_file):
             file.write(json.dumps(result) + '\n')
 
 if __name__ == "__main__":
-    input_file = "par.jsonl"
-    output_file = "ast_results.jsonl"
+    parser = argparse.ArgumentParser(description="BFCL AST Checker")
+    parser.add_argument("--input_file", required=True, help="Path to the input JSONL file")
+    parser.add_argument("--output_file", required=True, help="Path to the output JSONL file")
+    
+    args = parser.parse_args()
+
+    input_file = args.input_file
+    output_file = args.output_file
 
     results = process_jsonl_file(input_file)
     save_results_to_file(results, output_file)
 
     print(f"AST checking complete! Results saved to {output_file}")
+
