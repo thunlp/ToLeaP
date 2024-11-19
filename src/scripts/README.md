@@ -13,7 +13,11 @@ Run RoTBench Evaluation:
 ```
 python src/scripts/RoTBench_eval.py --test_file PATH --answer_file PATH
 ```
- 
+ **BFCL Evaluation**  
+ ```
+python bfcl_eval.py --input_file simple.jsonl --output_file bfcl_simple_result.jsonl
+ ```
+
  **Teval Evaluation**  
  ```
 python teval_eval.py
