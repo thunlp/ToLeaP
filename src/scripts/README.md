@@ -14,10 +14,9 @@ Run RoTBench Evaluation:
 python src/scripts/RoTBench_eval.py --test_file PATH --answer_file PATH
 ```
  
- **Teval Evaluation**  (need fix, haven't finished yet)
+ **Teval Evaluation**  
  ```
- sh test_all_en.sh hf $HF_PATH $HF_MODEL_NAME $META_TEMPLATE
- eg: sh test_all_en.sh hf \workspace 3.1-8B-INS llama3 should work
+python teval_eval.py
  ```
 
  **ToolAlpaca Evaluation**   
