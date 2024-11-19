@@ -400,7 +400,6 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num=1, batch_size=1
     batch_infer_list = []
     batch_infer_ids = []
     
-    # 用于存储所有结果
     results = {}
     
     for idx in tqdm(random_list):
@@ -428,7 +427,7 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num=1, batch_size=1
                 if not isinstance(predictions, list):
                     predictions = [predictions]
                 
-                # 确保预测结果和batch_ids长度匹配
+    
                 assert len(predictions) == len(batch_infer_ids), \
                     f"Predictions length ({len(predictions)}) != batch_infer_ids length ({len(batch_infer_ids)})"
                 
@@ -449,7 +448,7 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num=1, batch_size=1
                         'tools': dataset[data_ptr]['tools']
                     }
                     
-                    # 保存到结果字典
+                 
                     results[data_ptr] = new_conversation
                     
                     # Save the updated conversation
@@ -465,7 +464,6 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num=1, batch_size=1
                 print(f"Current batch_infer_list: {batch_infer_list}")
                 continue
     
-    # 不需要再次读取文件，直接返回内存中的结果
     return results
 
 
