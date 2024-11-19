@@ -13,7 +13,7 @@ def convert_to_sft_format_instruct(input_file, output_file):
         origin_prompt = entry.get("origin_prompt", [])
         for prompt in origin_prompt:
             if prompt["role"] == "system":
-                system_prompt = ""
+                system_prompt = prompt["content"]
             elif prompt["role"] == "user":
                 conversations.append({"from": "human", "value": prompt["content"]})
         
