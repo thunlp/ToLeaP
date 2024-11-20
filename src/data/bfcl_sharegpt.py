@@ -2,9 +2,6 @@ import json
 import sys
 import os
 
-
-import json
-
 def sft_simple(input_file, output_file, ground_truth_file):
     with open(input_file, 'r') as f:
         data = [json.loads(line) for line in f]
@@ -16,34 +13,51 @@ def sft_simple(input_file, output_file, ground_truth_file):
     result = []
     for entry in data:
         conversations = []
-        system_prompt = ""
-        tool_description = ""
-
-        question = entry.get("question", [])
-        for qa_pair in question:
+        system_prompt = "You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you will need to make one or more function/tool calls to achieve the purpose. \n If none of the function can be used, point it out. If the given question lacks the parameters required by the function, also point it out.\n You should only return the function calls in your response.\n If you decide to invoke any of the function(s), you MUST put it in the format of [func_name1(params_name1=params_value1, params_name2=params_value2...), func_name2(params)] \n You SHOULD NOT include any other text in the response. \n At each turn, your should try your best to complete the tasks requested by the user within the current turn. Continue to output functions to call until you have fulfilled the user's request to the best of your ability. Once you have no more functions to call, the system will consider the current turn complete and proceed to the next turn or task."
+        tool_description = json.dumps(entry.get("function", []))
+        
+        # Get the original question
+        original_question = ""
+        for qa_pair in entry.get("question", []):
             for q in qa_pair:
                 if q["role"] == "user":
-                    conversations.append({"from": "human", "value": q["content"]})
+                    original_question = q["content"]
+                    break
+
+        # Get ground truth for the current entry
+        ground_truth_entry = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
         
-        # Retrieve ground truth for the current entry
-        ground_truth_entry = ground_truth_data.get(entry["id"], {}).get("ground_truth", [{}])[0]
-        
-        # Dynamically extract the function name and arguments
-        if ground_truth_entry:
-            function_name = list(ground_truth_entry.keys())[0]
-            function_arguments = ground_truth_entry[function_name]
+        # For each function call, create a complete conversation round
+        for i, gt in enumerate(ground_truth_entry):
+            # Add human message for each round
+            conversations.append({
+                "from": "human",
+                "value": original_question
+            })
+            
+            # Create function call value
+            function_name = list(gt.keys())[0]
+            function_arguments = gt[function_name]
             function_call_value = {
                 "name": function_name,
                 "arguments": function_arguments
             }
-            conversations.append({"from": "function_call", "value": json.dumps(function_call_value)})
-            # Add corresponding observation as empty
-            conversations.append({"from": "observation", "value": ""})
-            # Add GPT response with ground truth in the desired format
-            conversations.append({"from": "gpt", "value": json.dumps(function_call_value)})
-        
-        # Add tool description with entire function JSON
-        tool_description = json.dumps(entry.get("function", []))
+            
+            # Add function call sequence
+            conversations.extend([
+                {
+                    "from": "function_call",
+                    "value": json.dumps([function_call_value])
+                },
+                {
+                    "from": "observation",
+                    "value": ""
+                },
+                {
+                    "from": "gpt",
+                    "value": json.dumps([function_call_value])
+                }
+            ])
         
         converted_entry = {
             "conversations": conversations,
@@ -54,7 +68,6 @@ def sft_simple(input_file, output_file, ground_truth_file):
     
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
-
 
 def sft_multi(input_file, output_file, ground_truth_file):
     class_to_file_mapping = {
@@ -84,20 +97,21 @@ def sft_multi(input_file, output_file, ground_truth_file):
         question = entry.get("question", [])
         ground_truth_list = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
 
-        # Iterate over multi-turn conversations
+        # Process each turn
         for i, qa_pair in enumerate(question):
+            # Add human message
             for q in qa_pair:
                 if q["role"] == "user":
                     conversations.append({"from": "human", "value": q["content"]})
             
+            # Add corresponding ground truth if available
             if i < len(ground_truth_list):
-                # Add function_call with ground truth JSON
                 ground_truth = ground_truth_list[i]
-                conversations.append({"from": "function_call", "value": json.dumps(ground_truth)})
-                # Add corresponding observation as empty
-                conversations.append({"from": "observation", "value": ""})
-                # Add GPT response with ground truth
-                conversations.append({"from": "gpt", "value": json.dumps(ground_truth)})
+                conversations.extend([
+                    {"from": "function_call", "value": json.dumps(ground_truth)},
+                    {"from": "observation", "value": ""},
+                    {"from": "gpt", "value": json.dumps(ground_truth)}
+                ])
         
         # Add tool description from involved_classes
         involved_classes = entry.get("involved_classes", [])
@@ -122,7 +136,6 @@ def sft_multi(input_file, output_file, ground_truth_file):
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
 
-
 if __name__ == "__main__":
     input_prefix = sys.argv[1]
     if input_prefix == 'all':
@@ -134,6 +147,5 @@ if __name__ == "__main__":
         sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
         sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/sft_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
         sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/stf_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
-        # sft_multi('bfcl/BFCL_v3_multi_turn_base.json', 'sft_data/sft_bfclmulti_base.json', 'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')
