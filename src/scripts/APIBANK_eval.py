@@ -134,22 +134,22 @@ def ts_eval(test, answer):
         answers = get_answer_list(answer[i])
         try:
             test_action, test_action_input = get_test_value(test[i])
+            # Check all possible answers
+            right_status = 0
+            for ans in answers:
+                answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+                if answer_action[-1] == "\n":
+                    answer_action = answer_action[:-1]
+                if test_action == "finish":
+                    test_action = answer_action
+                if not answer_action == test_action:
+                    continue
+                if right_status < 1:
+                    right_status = 1
+                    # print("<Tool Selection : Right>")
+                break
         except:
             continue
-        # Check all possible answers
-        right_status = 0
-        for ans in answers:
-            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-            if answer_action[-1] == "\n":
-                answer_action = answer_action[:-1]
-            if test_action == "finish":
-                test_action = answer_action
-            if not answer_action == test_action:
-                continue
-            if right_status < 1:
-                right_status = 1
-                # print("<Tool Selection : Right>")
-                break
         if right_status >= 1:
             tool_selection.append(i)
     a_list = []
@@ -157,96 +157,6 @@ def ts_eval(test, answer):
     a_list.append(tool_selection)
     check_list.append(a_list)
 
-
-def pi_eval(test, answer, version=0):
-    global check_list
-    parameter_identification = []
-    for i in range(len(answer)):
-
-        answers = get_answer_list(answer[i])
-        test_action, test_action_input = get_test_value(test[i])
-        if not test_action_input:
-            continue
-        # Check all possible answers
-        right_status = 0
-        for ans in answers:
-            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-            if answer_action[-1] == "\n":
-                answer_action = answer_action[:-1]
-              
-            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
-            if test_action == "finish":
-                test_action = answer_action
-            if not answer_action == test_action:
-                continue
-            if right_status < 1:
-                right_status = 1
-            if not answer_action_input.keys() == test_action_input.keys():
-                continue
-            if right_status < 2:
-                right_status = 2
-                # print("<Parameter Identification : Right>")
-                break
-        if right_status >= 2:
-            parameter_identification.append(i)
-    a_list = []
-    a_list.append(len(parameter_identification))
-    a_list.append(parameter_identification)
-    check_list.append(a_list)
-
-
-def cf_eval(test, answer, version=0):
-    global check_list
-    content_filling = []
-    for i in range(len(answer)):
-        config = get_config(answer[i])
-        answers = get_answer_list(answer[i])
-        test_action, test_action_input = get_test_value(test[i])
-        if not test_action_input:
-            continue
-        # Check all possible answers
-        right_status = 0
-        for ans in answers:
-            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-            if answer_action[-1] == "\n":
-                answer_action = answer_action[:-1]
-            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
-            
-            
-            if test_action == "finish":
-                test_action = answer_action
-            if not answer_action == test_action:
-                continue
-            if right_status < 1:
-                right_status = 1
-            if not answer_action_input.keys() == test_action_input.keys():
-                continue
-            if right_status < 2:
-                right_status = 2
-
-            # if answer_action == config[-1]["name"]:
-            #     answer_action = "finish"
-            # if answer_action == config[-2]["name"]:
-            #     answer_action = "ask_to_user"
-            del_key = []
-            for key, value in answer_action_input.items():
-                if value == "None":
-                    del_key.append(key)
-            for key in del_key:
-                del answer_action_input[key]
-                del test_action_input[key]
-            if not answer_action_input == test_action_input and answer_action != "finish" and answer_action != "ask_to_user":
-                continue
-            if right_status < 3:
-                right_status = 3
-                # print("<Content Filling : Right>")
-                break
-        if right_status >= 3:
-            content_filling.append(i)
-    a_list = []
-    a_list.append(len(content_filling))
-    a_list.append(content_filling)
-    check_list.append(a_list)
 
 
 def calculate_rouge_l_score(reference, hypothesis):
@@ -261,8 +171,8 @@ def calculate_rouge_l_score(reference, hypothesis):
 
 def get_test_answer(data):
     test_value = data["predict"]
-    answer = test_value[test_value.find("Thought:"):]
-    return answer
+    # answer = test_value[test_value.find("Thought:"):]
+    return test_value
 
 def score(test, answer):
     score_list=[]
@@ -305,8 +215,8 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/scripts/gp_first_turn_new_clean.jsonl")
-    parser.add_argument("--answer_file", type=str, default="src/scripts/first_turn_new_clean.json")
+    parser.add_argument("--test_file", type=str, default="src/scripts/gp_sharegpt_format_lv1-api-train.jsonl")
+    parser.add_argument("--answer_file", type=str, default="src/scripts/sharegpt_format_lv1-api-train.json")
     args = parser.parse_args()
 
     #Test_file follows generated_prediction format
