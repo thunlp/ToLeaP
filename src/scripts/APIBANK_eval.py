@@ -3,7 +3,7 @@ import json
 import argparse
 import re
 from ast import literal_eval
-
+from rouge import Rouge
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -116,12 +116,12 @@ def get_test_value(data):
   
     test_value = data["predict"]
     test_action = test_value[test_value.find("Action:") + 8: test_value.find("Action Input:")]
+    if test_action[-1] == "\n":
+        test_action = test_action[:-1]
     try:
-        if test_action[-1] == "\n":
-            test_action = test_action[:-1]
         test_action_input=test_value[test_value.find("Action Input:") + 14:]
         test_action_input = json.loads(test_action_input)
-    except:
+    except json.decoder.JSONDecodeError:
         return test_action, 0
     # if isinstance(test_action_input, str):
     return test_action, test_action_input
@@ -139,20 +139,17 @@ def ts_eval(test, answer):
         # Check all possible answers
         right_status = 0
         for ans in answers:
-            try:
-                answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-                if answer_action[-1] == "\n":
-                    answer_action = answer_action[:-1]
-                if test_action == "finish":
-                    test_action = answer_action
-                if not answer_action == test_action:
-                    continue
-                if right_status < 1:
-                    right_status = 1
-                    # print("<Tool Selection : Right>")
-                    break
-            except:
+            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+            if answer_action[-1] == "\n":
+                answer_action = answer_action[:-1]
+            if test_action == "finish":
+                test_action = answer_action
+            if not answer_action == test_action:
                 continue
+            if right_status < 1:
+                right_status = 1
+                # print("<Tool Selection : Right>")
+                break
         if right_status >= 1:
             tool_selection.append(i)
     a_list = []
@@ -165,33 +162,31 @@ def pi_eval(test, answer, version=0):
     global check_list
     parameter_identification = []
     for i in range(len(answer)):
+
         answers = get_answer_list(answer[i])
-        try:
-            test_action, test_action_input = get_test_value(test[i])
-        except:
+        test_action, test_action_input = get_test_value(test[i])
+        if not test_action_input:
             continue
         # Check all possible answers
         right_status = 0
         for ans in answers:
             answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-            try:
-                if answer_action[-1] == "\n":
-                    answer_action = answer_action[:-1]  
-                answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
-                if test_action == "finish":
-                    test_action = answer_action
-                if not answer_action == test_action:
-                    continue
-                if right_status < 1:
-                    right_status = 1
-                if not answer_action_input.keys() == test_action_input.keys():
-                    continue
-                if right_status < 2:
-                    right_status = 2
-                    # print("<Parameter Identification : Right>")
-                    break
-            except:
+            if answer_action[-1] == "\n":
+                answer_action = answer_action[:-1]
+              
+            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
+            if test_action == "finish":
+                test_action = answer_action
+            if not answer_action == test_action:
                 continue
+            if right_status < 1:
+                right_status = 1
+            if not answer_action_input.keys() == test_action_input.keys():
+                continue
+            if right_status < 2:
+                right_status = 2
+                # print("<Parameter Identification : Right>")
+                break
         if right_status >= 2:
             parameter_identification.append(i)
     a_list = []
@@ -207,50 +202,45 @@ def cf_eval(test, answer, version=0):
         config = get_config(answer[i])
         answers = get_answer_list(answer[i])
         test_action, test_action_input = get_test_value(test[i])
-        try:
-            test_action, test_action_input = get_test_value(test[i])
-        except:
+        if not test_action_input:
             continue
         # Check all possible answers
         right_status = 0
         for ans in answers:
-            try:
-                answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
-                if answer_action[-1] == "\n":
-                    answer_action = answer_action[:-1]
-                answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
-                
-                
-                if test_action == "finish":
-                    test_action = answer_action
-                if not answer_action == test_action:
-                    continue
-                if right_status < 1:
-                    right_status = 1
-                if not answer_action_input.keys() == test_action_input.keys():
-                    continue
-                if right_status < 2:
-                    right_status = 2
-
-                # if answer_action == config[-1]["name"]:
-                #     answer_action = "finish"
-                # if answer_action == config[-2]["name"]:
-                #     answer_action = "ask_to_user"
-                del_key = []
-                for key, value in answer_action_input.items():
-                    if value == "None":
-                        del_key.append(key)
-                for key in del_key:
-                    del answer_action_input[key]
-                    del test_action_input[key]
-                if not answer_action_input == test_action_input and answer_action != "finish" and answer_action != "ask_to_user":
-                    continue
-                if right_status < 3:
-                    right_status = 3
-                    # print("<Content Filling : Right>")
-                    break
-            except:
+            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+            if answer_action[-1] == "\n":
+                answer_action = answer_action[:-1]
+            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
+            
+            
+            if test_action == "finish":
+                test_action = answer_action
+            if not answer_action == test_action:
                 continue
+            if right_status < 1:
+                right_status = 1
+            if not answer_action_input.keys() == test_action_input.keys():
+                continue
+            if right_status < 2:
+                right_status = 2
+
+            # if answer_action == config[-1]["name"]:
+            #     answer_action = "finish"
+            # if answer_action == config[-2]["name"]:
+            #     answer_action = "ask_to_user"
+            del_key = []
+            for key, value in answer_action_input.items():
+                if value == "None":
+                    del_key.append(key)
+            for key in del_key:
+                del answer_action_input[key]
+                del test_action_input[key]
+            if not answer_action_input == test_action_input and answer_action != "finish" and answer_action != "ask_to_user":
+                continue
+            if right_status < 3:
+                right_status = 3
+                # print("<Content Filling : Right>")
+                break
         if right_status >= 3:
             content_filling.append(i)
     a_list = []
@@ -259,23 +249,47 @@ def cf_eval(test, answer, version=0):
     check_list.append(a_list)
 
 
+def calculate_rouge_l_score(reference, hypothesis):
+    rouge = Rouge()
+    try:
+        scores = rouge.get_scores(hypothesis, reference)
+        rouge_l_score = scores[0]['rouge-l']['f']
+    except:
+        rouge_l_score = 0
+     
+    return rouge_l_score
+
+def get_test_answer(data):
+    test_value = data["predict"]
+    answer = test_value[test_value.find("Thought:"):]
+    return answer
+
+def score(test, answer):
+    score_list=[]
+    for i in range(len(answer)):
+        answers = test[i]["label"]
+        predict_anwser = get_test_answer(test[i])
+        # test_action, test_action_input = get_test_value(test[i])    
+        score = calculate_rouge_l_score(answers, predict_anwser)
+        if score!=0:
+            score_list.append(score)
+
+    a_list = []
+    a_list.append(len(score_list))
+    a_list.append(score_list)
+    check_list.append(a_list)
+   
+
 def general_eval(test_data, answer_data):
     ts_eval(test_data, answer_data)
-    pi_eval(test_data, answer_data)
-    cf_eval(test_data, answer_data)
-
-
-def raven_eval(test_data, answer_data, version):
-    ts_eval(test_data, answer_data, version)
-    pi_eval(test_data, answer_data, version)
-    cf_eval(test_data, answer_data, version)
+    score(test_data, answer_data)
 
 
 def show_stats(check_list, max_len):
     print("Overall:")
     print("Tool Selection: " + "{:.2f}".format(check_list[0][0] / max_len * 100 ) + "%")
-    print("Parameter Identification: " + "{:.2f}".format(check_list[1][0] / max_len * 100) + "%")
-    print("Content Filling: " + "{:.2f}".format(check_list[2][0] / max_len * 100) + "%")
+    print("Rouge: " + "{:.2f}".format(sum(check_list[1][1]) / check_list[1][0]))
+
 
     # # All Scenarios
     # scenarios = ["Text Generation", "Real-Time Search", "Data Understanding", "Personal Life", "Application Manipulation", "Information Retrieval", "Financial Transactions"]
