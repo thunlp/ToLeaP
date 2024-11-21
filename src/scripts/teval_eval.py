@@ -108,30 +108,27 @@ if __name__ == "__main__":
     import json
     import os
     
-    # Get absolute path
+
     base_path = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_path, 'gp_stf_teval_ins.jsonl')
     
-    # Initialize evaluator
     evaluator = FunctionCallEvaluator()
     
     try:
-        # Load dataset
         dataset = []
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
-                if line.strip():  # Skip empty lines
+                if line.strip(): 
                     dataset.append(json.loads(line))
         
-        # Run evaluation
+
         dataset_results = evaluator.evaluate_dataset(dataset)
         
-        # Save results
+
         output_path = os.path.join(base_path, 'evaluation_results.json')
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(dataset_results, f, ensure_ascii=False, indent=2)
         
-        # Print summary
         print("\nEvaluation Summary:")
         print(f"Number of examples evaluated: {len(dataset)}")
         print(f"Average format score: {dataset_results['summary']['avg_format_score']:.3f}")
