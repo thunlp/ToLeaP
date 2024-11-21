@@ -10,13 +10,13 @@ class FunctionCallEvaluator:
         
     def extract_action_info(self, text):
         try:
-            # Extract action
+     
             action_match = re.search(self.action_pattern, text)
             if not action_match:
                 return None, None
             action = action_match.group(1).strip()
             
-            # Extract action input
+    
             input_match = re.search(self.action_input_pattern, text)
             if not input_match:
                 return None, None
@@ -30,7 +30,7 @@ class FunctionCallEvaluator:
         cnt = 0.
         if gt_action == pred_action:
             cnt += 1.
-        num_args = len(gt_args) + 1  # 1 means action name match
+        num_args = len(gt_args) + 1 
         for gt_key in gt_args:
             pred_val = pred_args.get(gt_key, "")
             if pred_val == gt_args[gt_key]:
@@ -39,12 +39,12 @@ class FunctionCallEvaluator:
     
     def evaluate_single(self, example):
         try:
-            # Parse ground truth
+  
             label = json.loads(example["label"])
             gt_name = label["name"]
             gt_args = label["arguments"]
             
-            # Parse prediction
+        
             predict = example["predict"]
             pred_action, pred_args = self.extract_action_info(predict)
             
@@ -56,10 +56,10 @@ class FunctionCallEvaluator:
                     "error": "Invalid format"
                 }
             
-            # Format is correct
+         
             format_score = 1
             
-            # Calculate args score
+           
             args_score = self.compute_args_em_metric(gt_name, pred_action, gt_args, pred_args)
             
             total_score = (format_score + args_score) / 2
@@ -103,7 +103,6 @@ class FunctionCallEvaluator:
             }
         }
 
-# Example usage:
 if __name__ == "__main__":
     import json
     import os
