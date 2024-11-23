@@ -94,6 +94,6 @@ def transform_jsonl(input_file, output_file, id_prefix="simple"):
                     transformed["id"] = f"{id_prefix}_{i}"
                 f_out.write(json.dumps(transformed, ensure_ascii=False) + '\n')
                 
-# transform_jsonl('simple.jsonl', 'simple_format.json', id_prefix='simple') 
-# transform_jsonl('parallel.jsonl', 'parallel_format.json', id_prefix='parallel') 
+# transform_jsonl('simple.jsonl', 'BFCL_V3_simple.json', id_prefix='simple') 
+# transform_jsonl('parallel.jsonl', 'BFCL_V3_parallel.json', id_prefix='parallel') 
 transform_jsonl('multiple.jsonl', 'BFCL_V3_multiple.json', id_prefix='multiple') 

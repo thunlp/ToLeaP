@@ -1,6 +1,5 @@
 set -e
 
-
 mkdir -p result
 
 read -p "请输入 model-name: " model_name
