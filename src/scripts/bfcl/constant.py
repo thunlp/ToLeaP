@@ -5,7 +5,7 @@ RESULT_PATH = "../result/"
 PROMPT_PATH = "../../data/bfcl/"
 MULTI_TURN_FUNC_DOC_PATH = "../data/multi_turn_func_doc/"
 POSSIBLE_ANSWER_PATH = "../../data/bfcl/possible_answer/"
-SCORE_PATH = "../score/"
+SCORE_PATH = "../result/badcases"
 DOTENV_PATH = "../.env"
 UTILS_PATH = "../utils/"
 

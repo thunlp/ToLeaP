@@ -243,378 +243,378 @@ def get_cost_letency_info(model_name, cost_data, latency_data):
 
 
 # TODO: Refactor this function to reduce code duplication
-def generate_leaderboard_csv(
-    leaderboard_table, output_path, eval_models=None, eval_categories=None
-):
-    print("📈 Aggregating data to generate leaderboard score table...")
-    data_non_live = []
-    data_live = []
-    data_multi_turn = []
-    data_combined = []
-    for model_name, value in leaderboard_table.items():
-        model_name_escaped = model_name.replace("_", "/")
+# def generate_leaderboard_csv(
+#     leaderboard_table, output_path, eval_models=None, eval_categories=None
+# ):
+#     print("📈 Aggregating data to generate leaderboard score table...")
+#     data_non_live = []
+#     data_live = []
+#     data_multi_turn = []
+#     data_combined = []
+#     for model_name, value in leaderboard_table.items():
+#         model_name_escaped = model_name.replace("_", "/")
 
-        cost_data = value.get("cost", {"input_data": [], "output_data": []})
-        latency_data = value.get("latency", {"data": []})
-        cost, latency_mean, latency_std, percentile_95_latency = get_cost_letency_info(
-            model_name_escaped, cost_data, latency_data
-        )
+#         cost_data = value.get("cost", {"input_data": [], "output_data": []})
+#         latency_data = value.get("latency", {"data": []})
+#         cost, latency_mean, latency_std, percentile_95_latency = get_cost_letency_info(
+#             model_name_escaped, cost_data, latency_data
+#         )
 
-        # Non-Live Score
-        python_simple_ast_non_live = value.get("simple", {"accuracy": 0, "total_count": 0})
-        python_multiple_ast_non_live = value.get(
-            "multiple", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_ast_non_live = value.get(
-            "parallel", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_multiple_ast_non_live = value.get(
-            "parallel_multiple", {"accuracy": 0, "total_count": 0}
-        )
-        python_simple_exec_non_live = value.get(
-            "exec_simple", {"accuracy": 0, "total_count": 0}
-        )
-        python_multiple_exec_non_live = value.get(
-            "exec_multiple", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_exec_non_live = value.get(
-            "exec_parallel", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_multiple_exec_non_live = value.get(
-            "exec_parallel_multiple", {"accuracy": 0, "total_count": 0}
-        )
-        java_simple_ast_non_live = value.get("java", {"accuracy": 0, "total_count": 0})
-        javascript_simple_ast_non_live = value.get(
-            "javascript", {"accuracy": 0, "total_count": 0}
-        )
-        rest_simple_exec_non_live = value.get("rest", {"accuracy": 0, "total_count": 0})
-        irrelevance_non_live = value.get("irrelevance", {"accuracy": 0, "total_count": 0})
+#         # Non-Live Score
+#         python_simple_ast_non_live = value.get("simple", {"accuracy": 0, "total_count": 0})
+#         python_multiple_ast_non_live = value.get(
+#             "multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_ast_non_live = value.get(
+#             "parallel", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_multiple_ast_non_live = value.get(
+#             "parallel_multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_simple_exec_non_live = value.get(
+#             "exec_simple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_multiple_exec_non_live = value.get(
+#             "exec_multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_exec_non_live = value.get(
+#             "exec_parallel", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_multiple_exec_non_live = value.get(
+#             "exec_parallel_multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         java_simple_ast_non_live = value.get("java", {"accuracy": 0, "total_count": 0})
+#         javascript_simple_ast_non_live = value.get(
+#             "javascript", {"accuracy": 0, "total_count": 0}
+#         )
+#         rest_simple_exec_non_live = value.get("rest", {"accuracy": 0, "total_count": 0})
+#         irrelevance_non_live = value.get("irrelevance", {"accuracy": 0, "total_count": 0})
 
-        simple_ast_non_live = calculate_unweighted_accuracy(
-            [python_simple_ast_non_live, java_simple_ast_non_live, javascript_simple_ast_non_live]
-        )
-        multiple_ast_non_live = python_multiple_ast_non_live
-        parallel_ast_non_live = python_parallel_ast_non_live
-        parallel_multiple_ast_non_live = python_parallel_multiple_ast_non_live
-        simple_exec_non_live = calculate_unweighted_accuracy(
-            [python_simple_exec_non_live, rest_simple_exec_non_live]
-        )
-        multiple_exec_non_live = python_multiple_exec_non_live
-        parallel_exec_non_live = python_parallel_exec_non_live
-        parallel_multiple_exec_non_live = python_parallel_multiple_exec_non_live
+#         simple_ast_non_live = calculate_unweighted_accuracy(
+#             [python_simple_ast_non_live, java_simple_ast_non_live, javascript_simple_ast_non_live]
+#         )
+#         multiple_ast_non_live = python_multiple_ast_non_live
+#         parallel_ast_non_live = python_parallel_ast_non_live
+#         parallel_multiple_ast_non_live = python_parallel_multiple_ast_non_live
+#         simple_exec_non_live = calculate_unweighted_accuracy(
+#             [python_simple_exec_non_live, rest_simple_exec_non_live]
+#         )
+#         multiple_exec_non_live = python_multiple_exec_non_live
+#         parallel_exec_non_live = python_parallel_exec_non_live
+#         parallel_multiple_exec_non_live = python_parallel_multiple_exec_non_live
 
-        summary_ast_non_live = calculate_unweighted_accuracy(
-            [simple_ast_non_live, multiple_ast_non_live, parallel_ast_non_live, parallel_multiple_ast_non_live]
-        )
-        summary_exec_non_live = calculate_unweighted_accuracy(
-            [simple_exec_non_live, multiple_exec_non_live, parallel_exec_non_live, parallel_multiple_exec_non_live]
-        )
-        overall_accuracy_non_live = calculate_unweighted_accuracy(
-            [
-                simple_ast_non_live,
-                multiple_ast_non_live,
-                parallel_ast_non_live,
-                parallel_multiple_ast_non_live,
-                simple_exec_non_live,
-                multiple_exec_non_live,
-                parallel_exec_non_live,
-                parallel_multiple_exec_non_live,
-                irrelevance_non_live,
-            ]
-        )
+#         summary_ast_non_live = calculate_unweighted_accuracy(
+#             [simple_ast_non_live, multiple_ast_non_live, parallel_ast_non_live, parallel_multiple_ast_non_live]
+#         )
+#         summary_exec_non_live = calculate_unweighted_accuracy(
+#             [simple_exec_non_live, multiple_exec_non_live, parallel_exec_non_live, parallel_multiple_exec_non_live]
+#         )
+#         overall_accuracy_non_live = calculate_unweighted_accuracy(
+#             [
+#                 simple_ast_non_live,
+#                 multiple_ast_non_live,
+#                 parallel_ast_non_live,
+#                 parallel_multiple_ast_non_live,
+#                 simple_exec_non_live,
+#                 multiple_exec_non_live,
+#                 parallel_exec_non_live,
+#                 parallel_multiple_exec_non_live,
+#                 irrelevance_non_live,
+#             ]
+#         )
 
-        data_non_live.append(
-            [
-                "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
-                overall_accuracy_non_live["accuracy"],
-                summary_ast_non_live["accuracy"],
-                summary_exec_non_live["accuracy"],
-                simple_ast_non_live["accuracy"],
-                python_simple_ast_non_live["accuracy"],
-                java_simple_ast_non_live["accuracy"],
-                javascript_simple_ast_non_live["accuracy"],
-                multiple_ast_non_live["accuracy"],
-                parallel_ast_non_live["accuracy"],
-                parallel_multiple_ast_non_live["accuracy"],
-                simple_exec_non_live["accuracy"],
-                python_simple_exec_non_live["accuracy"],
-                rest_simple_exec_non_live["accuracy"],
-                multiple_exec_non_live["accuracy"],
-                parallel_exec_non_live["accuracy"],
-                parallel_multiple_exec_non_live["accuracy"],
-                irrelevance_non_live["accuracy"],
-            ]
-        )
+#         data_non_live.append(
+#             [
+#                 "N/A",
+#                 MODEL_METADATA_MAPPING[model_name_escaped][0],
+#                 overall_accuracy_non_live["accuracy"],
+#                 summary_ast_non_live["accuracy"],
+#                 summary_exec_non_live["accuracy"],
+#                 simple_ast_non_live["accuracy"],
+#                 python_simple_ast_non_live["accuracy"],
+#                 java_simple_ast_non_live["accuracy"],
+#                 javascript_simple_ast_non_live["accuracy"],
+#                 multiple_ast_non_live["accuracy"],
+#                 parallel_ast_non_live["accuracy"],
+#                 parallel_multiple_ast_non_live["accuracy"],
+#                 simple_exec_non_live["accuracy"],
+#                 python_simple_exec_non_live["accuracy"],
+#                 rest_simple_exec_non_live["accuracy"],
+#                 multiple_exec_non_live["accuracy"],
+#                 parallel_exec_non_live["accuracy"],
+#                 parallel_multiple_exec_non_live["accuracy"],
+#                 irrelevance_non_live["accuracy"],
+#             ]
+#         )
 
-        # Live Score
-        python_simple_ast_live = value.get(
-            "live_simple", {"accuracy": 0, "total_count": 0}
-        )
-        python_multiple_ast_live = value.get(
-            "live_multiple", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_ast_live = value.get(
-            "live_parallel", {"accuracy": 0, "total_count": 0}
-        )
-        python_parallel_multiple_ast_live = value.get(
-            "live_parallel_multiple", {"accuracy": 0, "total_count": 0}
-        )
-        irrelevance_live = value.get(
-            "live_irrelevance", {"accuracy": 0, "total_count": 0}
-        )
-        relevance_live = value.get("live_relevance", {"accuracy": 0, "total_count": 0})
-        summary_ast_live = calculate_weighted_accuracy(
-            [
-                python_simple_ast_live,
-                python_multiple_ast_live,
-                python_parallel_ast_live,
-                python_parallel_multiple_ast_live,
-            ]
-        )
+#         # Live Score
+#         python_simple_ast_live = value.get(
+#             "live_simple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_multiple_ast_live = value.get(
+#             "live_multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_ast_live = value.get(
+#             "live_parallel", {"accuracy": 0, "total_count": 0}
+#         )
+#         python_parallel_multiple_ast_live = value.get(
+#             "live_parallel_multiple", {"accuracy": 0, "total_count": 0}
+#         )
+#         irrelevance_live = value.get(
+#             "live_irrelevance", {"accuracy": 0, "total_count": 0}
+#         )
+#         relevance_live = value.get("live_relevance", {"accuracy": 0, "total_count": 0})
+#         summary_ast_live = calculate_weighted_accuracy(
+#             [
+#                 python_simple_ast_live,
+#                 python_multiple_ast_live,
+#                 python_parallel_ast_live,
+#                 python_parallel_multiple_ast_live,
+#             ]
+#         )
 
-        overall_accuracy_live = calculate_weighted_accuracy(
-            [
-                python_simple_ast_live,
-                python_multiple_ast_live,
-                python_parallel_ast_live,
-                python_parallel_multiple_ast_live,
-                irrelevance_live,
-                relevance_live,
-            ]
-        )
+#         overall_accuracy_live = calculate_weighted_accuracy(
+#             [
+#                 python_simple_ast_live,
+#                 python_multiple_ast_live,
+#                 python_parallel_ast_live,
+#                 python_parallel_multiple_ast_live,
+#                 irrelevance_live,
+#                 relevance_live,
+#             ]
+#         )
 
-        data_live.append(
-            [
-                "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
-                overall_accuracy_live["accuracy"],
-                summary_ast_live["accuracy"],
-                python_simple_ast_live["accuracy"],
-                python_multiple_ast_live["accuracy"],
-                python_parallel_ast_live["accuracy"],
-                python_parallel_multiple_ast_live["accuracy"],
-                irrelevance_live["accuracy"],
-                relevance_live["accuracy"],
-            ]
-        )
+#         data_live.append(
+#             [
+#                 "N/A",
+#                 MODEL_METADATA_MAPPING[model_name_escaped][0],
+#                 overall_accuracy_live["accuracy"],
+#                 summary_ast_live["accuracy"],
+#                 python_simple_ast_live["accuracy"],
+#                 python_multiple_ast_live["accuracy"],
+#                 python_parallel_ast_live["accuracy"],
+#                 python_parallel_multiple_ast_live["accuracy"],
+#                 irrelevance_live["accuracy"],
+#                 relevance_live["accuracy"],
+#             ]
+#         )
 
-        # Multi-Turn Score
-        multi_turn_base = value.get("multi_turn_base", {"accuracy": 0, "total_count": 0})
-        multi_turn_miss_func = value.get(
-            "multi_turn_miss_func", {"accuracy": 0, "total_count": 0}
-        )
-        multi_turn_miss_param = value.get(
-            "multi_turn_miss_param", {"accuracy": 0, "total_count": 0}
-        )
-        multi_turn_long_context = value.get(
-            "multi_turn_long_context", {"accuracy": 0, "total_count": 0}
-        )
-        overall_accuracy_multi_turn = calculate_unweighted_accuracy(
-            [
-                multi_turn_base,
-                multi_turn_miss_func,
-                multi_turn_miss_param,
-                multi_turn_long_context,
-            ]
-        )
+#         # Multi-Turn Score
+#         multi_turn_base = value.get("multi_turn_base", {"accuracy": 0, "total_count": 0})
+#         multi_turn_miss_func = value.get(
+#             "multi_turn_miss_func", {"accuracy": 0, "total_count": 0}
+#         )
+#         multi_turn_miss_param = value.get(
+#             "multi_turn_miss_param", {"accuracy": 0, "total_count": 0}
+#         )
+#         multi_turn_long_context = value.get(
+#             "multi_turn_long_context", {"accuracy": 0, "total_count": 0}
+#         )
+#         overall_accuracy_multi_turn = calculate_unweighted_accuracy(
+#             [
+#                 multi_turn_base,
+#                 multi_turn_miss_func,
+#                 multi_turn_miss_param,
+#                 multi_turn_long_context,
+#             ]
+#         )
 
-        data_multi_turn.append(
-            [
-                "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
-                overall_accuracy_multi_turn["accuracy"],
-                multi_turn_base["accuracy"],
-                multi_turn_miss_func["accuracy"],
-                multi_turn_miss_param["accuracy"],
-                multi_turn_long_context["accuracy"],
-            ]
-        )
+#         data_multi_turn.append(
+#             [
+#                 "N/A",
+#                 MODEL_METADATA_MAPPING[model_name_escaped][0],
+#                 overall_accuracy_multi_turn["accuracy"],
+#                 multi_turn_base["accuracy"],
+#                 multi_turn_miss_func["accuracy"],
+#                 multi_turn_miss_param["accuracy"],
+#                 multi_turn_long_context["accuracy"],
+#             ]
+#         )
 
-        # Total Score
-        single_turn_ast = calculate_unweighted_accuracy([overall_accuracy_live, overall_accuracy_non_live])
-        total_irrelevance = calculate_unweighted_accuracy([irrelevance_non_live, irrelevance_live])
-        total_relevance = relevance_live
+#         # Total Score
+#         single_turn_ast = calculate_unweighted_accuracy([overall_accuracy_live, overall_accuracy_non_live])
+#         total_irrelevance = calculate_unweighted_accuracy([irrelevance_non_live, irrelevance_live])
+#         total_relevance = relevance_live
 
-        total_overall_accuracy = calculate_unweighted_accuracy(
-            [
-                overall_accuracy_live,
-                overall_accuracy_non_live,
-                overall_accuracy_multi_turn,
-            ]
-        )
+#         total_overall_accuracy = calculate_unweighted_accuracy(
+#             [
+#                 overall_accuracy_live,
+#                 overall_accuracy_non_live,
+#                 overall_accuracy_multi_turn,
+#             ]
+#         )
 
-        data_combined.append(
-            [
-                "N/A",
-                total_overall_accuracy["accuracy"],
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
-                MODEL_METADATA_MAPPING[model_name_escaped][1],
-                cost,
-                latency_mean,
-                latency_std,
-                percentile_95_latency,
-                summary_ast_non_live["accuracy"],
-                simple_ast_non_live["accuracy"],
-                multiple_ast_non_live["accuracy"],
-                parallel_ast_non_live["accuracy"],
-                parallel_multiple_ast_non_live["accuracy"],
-                summary_exec_non_live["accuracy"],
-                simple_exec_non_live["accuracy"],
-                multiple_exec_non_live["accuracy"],
-                parallel_exec_non_live["accuracy"],
-                parallel_multiple_exec_non_live["accuracy"],
-                overall_accuracy_live["accuracy"],
-                python_simple_ast_live["accuracy"],
-                python_multiple_ast_live["accuracy"],
-                python_parallel_ast_live["accuracy"],
-                python_parallel_multiple_ast_live["accuracy"],
-                overall_accuracy_multi_turn["accuracy"],
-                multi_turn_base["accuracy"],
-                multi_turn_miss_func["accuracy"],
-                multi_turn_miss_param["accuracy"],
-                multi_turn_long_context["accuracy"],
-                total_relevance["accuracy"],
-                total_irrelevance["accuracy"],
-                MODEL_METADATA_MAPPING[model_name_escaped][2],
-                MODEL_METADATA_MAPPING[model_name_escaped][3],
-            ]
-        )
+#         data_combined.append(
+#             [
+#                 "N/A",
+#                 total_overall_accuracy["accuracy"],
+#                 MODEL_METADATA_MAPPING[model_name_escaped][0],
+#                 MODEL_METADATA_MAPPING[model_name_escaped][1],
+#                 cost,
+#                 latency_mean,
+#                 latency_std,
+#                 percentile_95_latency,
+#                 summary_ast_non_live["accuracy"],
+#                 simple_ast_non_live["accuracy"],
+#                 multiple_ast_non_live["accuracy"],
+#                 parallel_ast_non_live["accuracy"],
+#                 parallel_multiple_ast_non_live["accuracy"],
+#                 summary_exec_non_live["accuracy"],
+#                 simple_exec_non_live["accuracy"],
+#                 multiple_exec_non_live["accuracy"],
+#                 parallel_exec_non_live["accuracy"],
+#                 parallel_multiple_exec_non_live["accuracy"],
+#                 overall_accuracy_live["accuracy"],
+#                 python_simple_ast_live["accuracy"],
+#                 python_multiple_ast_live["accuracy"],
+#                 python_parallel_ast_live["accuracy"],
+#                 python_parallel_multiple_ast_live["accuracy"],
+#                 overall_accuracy_multi_turn["accuracy"],
+#                 multi_turn_base["accuracy"],
+#                 multi_turn_miss_func["accuracy"],
+#                 multi_turn_miss_param["accuracy"],
+#                 multi_turn_long_context["accuracy"],
+#                 total_relevance["accuracy"],
+#                 total_irrelevance["accuracy"],
+#                 MODEL_METADATA_MAPPING[model_name_escaped][2],
+#                 MODEL_METADATA_MAPPING[model_name_escaped][3],
+#             ]
+#         )
 
-    # Write Non-Live Score File
-    data_non_live.sort(key=lambda x: x[2], reverse=True)
-    for i in range(len(data_non_live)):
-        data_non_live[i][0] = str(i + 1)
-        for j in range(2, len(data_non_live[i])):
-            data_non_live[i][j] = "{:.2f}%".format(data_non_live[i][j] * 100)
+#     # Write Non-Live Score File
+#     data_non_live.sort(key=lambda x: x[2], reverse=True)
+#     for i in range(len(data_non_live)):
+#         data_non_live[i][0] = str(i + 1)
+#         for j in range(2, len(data_non_live[i])):
+#             data_non_live[i][j] = "{:.2f}%".format(data_non_live[i][j] * 100)
 
-    data_non_live.insert(0, COLUMNS_NON_LIVE)
+#     data_non_live.insert(0, COLUMNS_NON_LIVE)
 
-    filepath = output_path / "data_non_live.csv"
-    with open(filepath, "w") as f:
-        for i, row in enumerate(data_non_live):
-            if i < len(data_non_live) - 1:
-                f.write(",".join(row) + "\n")
-            else:
-                f.write(",".join(row))
+#     filepath = output_path / "data_non_live.csv"
+#     with open(filepath, "w") as f:
+#         for i, row in enumerate(data_non_live):
+#             if i < len(data_non_live) - 1:
+#                 f.write(",".join(row) + "\n")
+#             else:
+#                 f.write(",".join(row))
 
-    # Write Live Score File
-    data_live.sort(key=lambda x: x[2], reverse=True)
-    for i in range(len(data_live)):
-        data_live[i][0] = str(i + 1)
-        for j in range(2, len(data_live[i])):
-            data_live[i][j] = "{:.2f}%".format(data_live[i][j] * 100)
+#     # Write Live Score File
+#     data_live.sort(key=lambda x: x[2], reverse=True)
+#     for i in range(len(data_live)):
+#         data_live[i][0] = str(i + 1)
+#         for j in range(2, len(data_live[i])):
+#             data_live[i][j] = "{:.2f}%".format(data_live[i][j] * 100)
 
-    data_live.insert(0, COLUMNS_LIVE)
+#     data_live.insert(0, COLUMNS_LIVE)
 
-    filepath = output_path / "data_live.csv"
-    with open(filepath, "w") as f:
-        for i, row in enumerate(data_live):
-            if i < len(data_live) - 1:
-                f.write(",".join(row) + "\n")
-            else:
-                f.write(",".join(row))
+#     filepath = output_path / "data_live.csv"
+#     with open(filepath, "w") as f:
+#         for i, row in enumerate(data_live):
+#             if i < len(data_live) - 1:
+#                 f.write(",".join(row) + "\n")
+#             else:
+#                 f.write(",".join(row))
 
-    # Write Multi Turn Score File
-    data_multi_turn.sort(key=lambda x: x[2], reverse=True)
-    for i in range(len(data_multi_turn)):
-        data_multi_turn[i][0] = str(i + 1)
-        for j in range(2, len(data_multi_turn[i])):
-            data_multi_turn[i][j] = "{:.2f}%".format(data_multi_turn[i][j] * 100)
+#     # Write Multi Turn Score File
+#     data_multi_turn.sort(key=lambda x: x[2], reverse=True)
+#     for i in range(len(data_multi_turn)):
+#         data_multi_turn[i][0] = str(i + 1)
+#         for j in range(2, len(data_multi_turn[i])):
+#             data_multi_turn[i][j] = "{:.2f}%".format(data_multi_turn[i][j] * 100)
 
-    data_multi_turn.insert(0, COLUMNS_MULTI_TURN)
+#     data_multi_turn.insert(0, COLUMNS_MULTI_TURN)
 
-    filepath = output_path / "data_multi_turn.csv"
-    with open(filepath, "w") as f:
-        for i, row in enumerate(data_multi_turn):
-            if i < len(data_multi_turn) - 1:
-                f.write(",".join(row) + "\n")
-            else:
-                f.write(",".join(row))
+#     filepath = output_path / "data_multi_turn.csv"
+#     with open(filepath, "w") as f:
+#         for i, row in enumerate(data_multi_turn):
+#             if i < len(data_multi_turn) - 1:
+#                 f.write(",".join(row) + "\n")
+#             else:
+#                 f.write(",".join(row))
 
-    # Write Total Score File
-    data_combined.sort(key=lambda x: x[1], reverse=True)
-    for i in range(len(data_combined)):
-        data_combined[i][0] = str(i + 1)
-        data_combined[i][1] = "{:.2f}%".format(data_combined[i][1] * 100)
-        for j in range(4, 8):
-            data_combined[i][j] = str(data_combined[i][j])
-        for j in range(8, len(data_combined[i]) - 2):
-            data_combined[i][j] = "{:.2f}%".format(data_combined[i][j] * 100)
-        for j in range(len(data_combined[i]) - 2, len(data_combined[i])):
-            data_combined[i][j] = str(data_combined[i][j])
+#     # Write Total Score File
+#     data_combined.sort(key=lambda x: x[1], reverse=True)
+#     for i in range(len(data_combined)):
+#         data_combined[i][0] = str(i + 1)
+#         data_combined[i][1] = "{:.2f}%".format(data_combined[i][1] * 100)
+#         for j in range(4, 8):
+#             data_combined[i][j] = str(data_combined[i][j])
+#         for j in range(8, len(data_combined[i]) - 2):
+#             data_combined[i][j] = "{:.2f}%".format(data_combined[i][j] * 100)
+#         for j in range(len(data_combined[i]) - 2, len(data_combined[i])):
+#             data_combined[i][j] = str(data_combined[i][j])
 
-    data_combined.insert(0, COLUMNS_OVERALL)
+#     data_combined.insert(0, COLUMNS_OVERALL)
 
-    filepath = output_path / "data_overall.csv"
-    with open(filepath, "w") as f:
-        for i, row in enumerate(data_combined):
-            if i < len(data_combined) - 1:
-                f.write(",".join(row) + "\n")
-            else:
-                f.write(",".join(row))
+#     filepath = output_path / "data_overall.csv"
+#     with open(filepath, "w") as f:
+#         for i, row in enumerate(data_combined):
+#             if i < len(data_combined) - 1:
+#                 f.write(",".join(row) + "\n")
+#             else:
+#                 f.write(",".join(row))
 
-    # TODO: Update and optimize the logic
-    # Check if all categories are present and evaluated for all models
-    # if eval_models:
-    #     category_status = check_model_category_status(score_path=output_path)
-    #     check_all_category_present(
-    #         category_status, eval_models=eval_models, eval_categories=eval_categories
-    #     )
+#     # TODO: Update and optimize the logic
+#     # Check if all categories are present and evaluated for all models
+#     # if eval_models:
+#     #     category_status = check_model_category_status(score_path=output_path)
+#     #     check_all_category_present(
+#     #         category_status, eval_models=eval_models, eval_categories=eval_categories
+#     #     )
 
-    wandb_project = os.getenv("WANDB_BFCL_PROJECT")
-    if wandb_project and wandb_project != "ENTITY:PROJECT":
-        import wandb
+#     wandb_project = os.getenv("WANDB_BFCL_PROJECT")
+#     if wandb_project and wandb_project != "ENTITY:PROJECT":
+#         import wandb
 
-        # Initialize WandB run
-        wandb.init(
-            # wandb_project is 'entity:project'
-            entity=wandb_project.split(":")[0],
-            project=wandb_project.split(":")[1],
-            name=f"BFCL-v3-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
-        )
+#         # Initialize WandB run
+#         wandb.init(
+#             # wandb_project is 'entity:project'
+#             entity=wandb_project.split(":")[0],
+#             project=wandb_project.split(":")[1],
+#             name=f"BFCL-v3-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+#         )
 
-        # Log CSV files to WandB
-        # Read the CSV files
-        non_live_df = pd.read_csv(output_path / "data_non_live.csv")
-        live_df = pd.read_csv(output_path / "data_live.csv")
-        multi_turn_df = pd.read_csv(output_path / "data_multi_turn.csv")
-        overall_df = pd.read_csv(output_path / "data_overall.csv")
+#         # Log CSV files to WandB
+#         # Read the CSV files
+#         non_live_df = pd.read_csv(output_path / "data_non_live.csv")
+#         live_df = pd.read_csv(output_path / "data_live.csv")
+#         multi_turn_df = pd.read_csv(output_path / "data_multi_turn.csv")
+#         overall_df = pd.read_csv(output_path / "data_overall.csv")
 
-        # Convert DataFrames to WandB Tables
-        non_live_table = wandb.Table(dataframe=non_live_df)
-        live_table = wandb.Table(dataframe=live_df)
-        multi_turn_table = wandb.Table(dataframe=multi_turn_df)
-        overall_table = wandb.Table(dataframe=overall_df)
+#         # Convert DataFrames to WandB Tables
+#         non_live_table = wandb.Table(dataframe=non_live_df)
+#         live_table = wandb.Table(dataframe=live_df)
+#         multi_turn_table = wandb.Table(dataframe=multi_turn_df)
+#         overall_table = wandb.Table(dataframe=overall_df)
 
-        # Create artifacts
-        bfcl_artifact = wandb.Artifact("bfcl_results", type="dataset")
+#         # Create artifacts
+#         bfcl_artifact = wandb.Artifact("bfcl_results", type="dataset")
 
-        # Add tables to artifact
-        bfcl_artifact.add(non_live_table, "non_live_results")
-        bfcl_artifact.add(live_table, "live_results")
-        bfcl_artifact.add(multi_turn_table, "multi_turn_results")
-        bfcl_artifact.add(overall_table, "overall_results")
+#         # Add tables to artifact
+#         bfcl_artifact.add(non_live_table, "non_live_results")
+#         bfcl_artifact.add(live_table, "live_results")
+#         bfcl_artifact.add(multi_turn_table, "multi_turn_results")
+#         bfcl_artifact.add(overall_table, "overall_results")
 
-        # Add raw CSV files to artifact
-        bfcl_artifact.add_file(str(output_path / "data_non_live.csv"))
-        bfcl_artifact.add_file(str(output_path / "data_live.csv"))
-        bfcl_artifact.add_file(str(output_path / "data_multi_turn.csv"))
-        bfcl_artifact.add_file(str(output_path / "data_overall.csv"))
+#         # Add raw CSV files to artifact
+#         bfcl_artifact.add_file(str(output_path / "data_non_live.csv"))
+#         bfcl_artifact.add_file(str(output_path / "data_live.csv"))
+#         bfcl_artifact.add_file(str(output_path / "data_multi_turn.csv"))
+#         bfcl_artifact.add_file(str(output_path / "data_overall.csv"))
 
-        # Log tables directly
-        wandb.log(
-            {
-                "Non-Live Results": non_live_table,
-                "Live Results": live_table,
-                "Multi-Turn Results": multi_turn_table,
-                "Overall Results": overall_table,
-            }
-        )
+#         # Log tables directly
+#         wandb.log(
+#             {
+#                 "Non-Live Results": non_live_table,
+#                 "Live Results": live_table,
+#                 "Multi-Turn Results": multi_turn_table,
+#                 "Overall Results": overall_table,
+#             }
+#         )
 
-        # Log artifact
-        wandb.log_artifact(bfcl_artifact)
-        wandb.finish()
+#         # Log artifact
+#         wandb.log_artifact(bfcl_artifact)
+#         wandb.finish()
 
 
 def check_model_category_status(score_path):
@@ -734,25 +734,25 @@ def check_all_category_present(category_status, eval_models=None, eval_categorie
     return found_issues
 
 
-def update_leaderboard_table_with_score_file(leaderboard_table, score_path: Path) -> None:
+# def update_leaderboard_table_with_score_file(leaderboard_table, score_path: Path) -> None:
 
-    entries = score_path.iterdir()
+#     entries = score_path.iterdir()
 
-    # Filter out the subdirectories
-    subdirs = [entry for entry in entries if entry.is_dir()]
+#     # Filter out the subdirectories
+#     subdirs = [entry for entry in entries if entry.is_dir()]
 
-    # Traverse each subdirectory
-    for subdir in subdirs:
-        model_name = subdir.relative_to(score_path).name
-        # Find and process all JSON files in the subdirectory
-        for model_score_json in subdir.glob("*.json"):
-            metadata = load_file(model_score_json)[0]
-            accuracy, total_count = metadata["accuracy"], metadata["total_count"]
-            test_category = extract_test_category(model_score_json)
-            if model_name not in leaderboard_table:
-                leaderboard_table[model_name] = {}
-            if test_category not in leaderboard_table[model_name]:
-                leaderboard_table[model_name][test_category] = {
-                    "accuracy": accuracy,
-                    "total_count": total_count,
-                }
+#     # Traverse each subdirectory
+#     for subdir in subdirs:
+#         model_name = subdir.relative_to(score_path).name
+#         # Find and process all JSON files in the subdirectory
+#         for model_score_json in subdir.glob("*.json"):
+#             metadata = load_file(model_score_json)[0]
+#             accuracy, total_count = metadata["accuracy"], metadata["total_count"]
+#             test_category = extract_test_category(model_score_json)
+#             if model_name not in leaderboard_table:
+#                 leaderboard_table[model_name] = {}
+#             if test_category not in leaderboard_table[model_name]:
+#                 leaderboard_table[model_name][test_category] = {
+#                     "accuracy": accuracy,
+#                     "total_count": total_count,
+#                 }

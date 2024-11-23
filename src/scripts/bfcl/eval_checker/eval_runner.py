@@ -486,7 +486,7 @@ def runner(model_names, test_categories, api_sanity_check):
             print(f"🔍 Running test: {test_category}")
 
             model_result = load_file(model_result_json)
-            record_cost_latency(LEADERBOARD_TABLE, model_name, model_result)
+            # record_cost_latency(LEADERBOARD_TABLE, model_name, model_result)
 
             # Find the corresponding test file
             prompt_file = find_file_with_suffix(PROMPT_PATH, test_category)
@@ -571,7 +571,7 @@ def runner(model_names, test_categories, api_sanity_check):
                 print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
             # Single turn test
             else:
-                print('here')
+                print(RESULT_PATH)
                 accuracy, total_count = ast_file_runner(
                     handler,
                     model_result,
@@ -581,16 +581,16 @@ def runner(model_names, test_categories, api_sanity_check):
                     test_category,
                     model_name,
                 )
-                record_result(
-                    LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
-                )
+                # record_result(
+                #     LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
+                # )
                 print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
 
     # This function reads all the score files from local folder and updates the leaderboard table.
     # This is helpful when you only want to run the evaluation for a subset of models and test categories.
-    update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, SCORE_PATH)
-    # Write the leaderboard table to a file
-    generate_leaderboard_csv(LEADERBOARD_TABLE, SCORE_PATH, model_names, test_categories)
+    # update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, SCORE_PATH)
+    # # Write the leaderboard table to a file
+    # generate_leaderboard_csv(LEADERBOARD_TABLE, SCORE_PATH, model_names, test_categories)
 
     # Clean up the executable expected output files
     # They should be re-generated the next time the evaluation is run
