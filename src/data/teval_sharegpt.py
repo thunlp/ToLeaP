@@ -1,216 +1,111 @@
 import json
-import re
 import ast
-def convert_to_sft_format_instruct(input_file, output_file):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
+import re
+
+def clean_api_spec(api_spec_str):
+    try:
+        api_dict = ast.literal_eval(api_spec_str)
+        return api_dict
+    except:
+        print("Error parsing API spec:", api_spec_str)
+        raise
+
+def format_api_spec(api_spec_str):
+    api_spec = clean_api_spec(api_spec_str)
+    properties = {}
+    required = []
+    if 'required_parameters' in api_spec:
+        for param in api_spec['required_parameters']:
+            properties[param['name']] = {
+                'type': param['type'].lower(),
+                'description': param['description']
+            }
+            required.append(param['name'])
+            
+    if 'optional_parameters' in api_spec:
+        for param in api_spec['optional_parameters']:
+            properties[param['name']] = {
+                'type': param['type'].lower(),
+                'description': param['description']
+            }
     
-    result = []
-    for key, entry in data.items():
-        conversations = []
-        system_prompt = ""
-
-        origin_prompt = entry.get("origin_prompt", [])
-        for prompt in origin_prompt:
-            if prompt["role"] == "system":
-                system_prompt = prompt["content"]
-            elif prompt["role"] == "user":
-                conversations.append({"from": "human", "value": prompt["content"]})
-        
-        ground_truth = entry.get("ground_truth", {})
-        function_call_value = {
-            "name": ground_truth.get("action", ""),
-            "arguments": ground_truth.get("args", {})
+    tool = {
+        'name': api_spec['name'],
+        'description': api_spec['description'],
+        'parameters': {
+            'type': 'object',
+            'properties': properties,
+            'required': required
         }
-        
-        conversations.append({"from": "function_call", "value": json.dumps(function_call_value)})
-        conversations.append({"from": "observation", "value": ""})
-        conversations.append({"from": "gpt", "value": json.dumps(function_call_value)})
-        
-        tool_description = entry.get("origin_prompt", [])[0]["content"]
-        # Extract the tool description part
-        tool_description = tool_description.split('API:')[1].split('Please directly generate')[0].strip()
-        
-        # Convert single quotes to valid JSON format
-        try:
-            system_dict = ast.literal_eval(system_prompt)
-            system_prompt = json.dumps(system_dict)
-        except:
-            pass
+    }
+    return tool
 
-        try:
-            tools_dict = ast.literal_eval(tool_description)
-            tool_description = json.dumps(tools_dict)
-        except:
-            tool_description = ''
-
-        result.append({
-            "conversations": conversations,
-            "system": system_prompt,
-            "tools": tool_description
+def convert_to_sharegpt(query_data):
+    try:
+        system_content = query_data['origin_prompt'][0]['content']
+        api_spec = system_content.split("You have access to the following API:\n")[1].split("\nPlease")[0]
+        
+        tool = format_api_spec(api_spec)
+        tools = [tool]
+        
+        conversations = [
+            {
+                "from": "human",
+                "value": query_data['origin_prompt'][1]['content']
+            }
+        ]
+        
+        # Add function call
+        ground_truth = query_data['ground_truth']
+        function_call = {
+            "name": ground_truth['action'],
+            "arguments": ground_truth['args']
+        }
+        conversations.append({
+            "from": "function_call", 
+            "value": json.dumps(function_call)
         })
-    
-    with open(output_file, 'w') as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
-
-
-def convert_to_sft_format_plan(input_file, output_file):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-    
-    result = []
-    for key, entry in data.items():
-        conversations = []
         
-        # Process user prompts
-        origin_prompt = entry.get("origin_prompt", [])
-        system_prompt_content = ""
-        for prompt in origin_prompt:
-            if prompt["role"] == "system":
-                system_prompt_content = prompt["content"]
-            elif prompt["role"] == "user":
-                conversations.append({"from": "human", "value": prompt["content"]})
+        # Add empty observation
+        conversations.append({
+            "from": "observation",
+            "value": ""
+        })
         
-        # Process ground truth actions
-        ground_truth = entry.get("ground_truth", [])
-        for action in ground_truth:
-            function_call = {
-                "from": "function_call",
-                "value": json.dumps({"name": action["name"], "arguments": action["args"]})
-            }
-            conversations.append(function_call)
-            conversations.append({"from": "observation", "value": ""})
-            gpt_response = {
-                "from": "gpt",
-                "value": json.dumps({"name": action["name"], "arguments": action["args"]})
-            }
-            conversations.append(gpt_response)
-        
-        # Extract the JSON structure for API list from system content
-        # Using regular expression to isolate the API list
-        match = re.search(r"\[\[.*?\]\]", system_prompt_content, re.DOTALL)
-        tool_description = match.group(0) if match else "[]"
-        
-        # Reformat tool description as a JSON array string with each item formatted as JSON
-        tool_description = tool_description.replace("'", "\"")  # Ensures JSON compatibility
-
-        converted_entry = {
-            "conversations": conversations,
-            "system": "",  # Leave system empty
-            "tools": tool_description
-        }
-        result.append(converted_entry)
-    
-    with open(output_file, 'w') as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
-
-
-def convert_to_sft_format_retrieve(input_file, output_file):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-    
-    result = []
-    for key, entry in data.items():
-        conversations = []
-        
-        # Extract prompts from origin_prompt
-        origin_prompt = entry.get("origin_prompt", [])
-        system_prompt_content = ""
-        for prompt in origin_prompt:
-            if prompt["role"] == "system":
-                system_prompt_content = prompt["content"]
-            else:
-                conversations.append({"from": prompt["role"], "value": prompt["content"]})
-        
-        # Extract ground truth for function call
-        ground_truth = entry.get("ground_truth", {})
-        function_call = {
-            "from": "function_call",
-            "value": json.dumps({"name": ground_truth.get("name"), "arguments": ground_truth.get("args")})
-        }
-        conversations.append(function_call)
-        conversations.append({"from": "observation", "value": ""})
-        gpt_response = {
+        # Add GPT response (same as function call)
+        conversations.append({
             "from": "gpt",
-            "value": json.dumps({"name": ground_truth.get("name"), "arguments": ground_truth.get("args")})
-        }
-        conversations.append(gpt_response)
+            "value": json.dumps(function_call)
+        })
         
-        # Extract the tool descriptions from system content
-        # Using regular expression to isolate the tool descriptions as JSON-compatible string
-        match = re.search(r"\[(\{.*?\})\]", system_prompt_content, re.DOTALL)
-        tool_description = match.group(0) if match else "[]"
-        
-        # Reformat to ensure JSON compatibility
-        tool_description = tool_description.replace("'", "\"")  # Converts single to double quotes for JSON compatibility
-
-        # Prepare the final converted entry
-        converted_entry = {
+        return {
             "conversations": conversations,
-            "system": "",  # Leave system empty
-            "tools": tool_description
+            "system": system_content,
+            "tools": json.dumps(tools)
         }
-        result.append(converted_entry)
-    
-    with open(output_file, 'w') as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+        
+    except Exception as e:
+        print(f"Error processing query: {str(e)}")
+        raise
 
-
-def convert_to_sft_format_reason(input_file, output_file):
-    with open(input_file, 'r') as f:
+def process_Ins_json_file(input_file):
+    with open(input_file) as f:
         data = json.load(f)
     
-    result = []
-    for key, entry in data.items():
-        conversations = []
-        system_prompt = ""
-        tool_description = ""
-
-        # Extract system prompt and prompts from origin_prompt
-        origin_prompt = entry.get("origin_prompt", [])
-        for prompt in origin_prompt:
-            if prompt["role"] == "system":
-                system_prompt = prompt["content"]
-            else:
-                conversations.append({"from": prompt["role"], "value": prompt["content"]})
-        
-        # Extract ground truth for function call and generate conversation steps
-        ground_truth = entry.get("ground_truth", {})
-        thought = ground_truth.get("thought", "")
-        if thought:
-            conversations.append({"from": "assistant", "value": thought})
-        
-        function_call = {
-            "from": "function_call",
-            "value": json.dumps({"name": ground_truth["name"], "args": ground_truth["args"]})
-        }
-        conversations.append(function_call)
-        conversations.append({"from": "observation", "value": ""})
-        gpt_response = {
-            "from": "gpt",
-            "value": json.dumps({"name": ground_truth["name"], "args": ground_truth["args"]})
-        }
-        conversations.append(gpt_response)
-        
-        # Extract tool descriptions from the system prompt in origin_prompt
-        tool_description = ""
-        if origin_prompt and origin_prompt[0]["role"] == "system":
-            tool_description = origin_prompt[0]["content"].split('tools:\n')[1].strip()
-        
-        # Prepare the final converted entry
-        converted_entry = {
-            "conversations": conversations,
-            "system": system_prompt,
-            "tools": tool_description
-        }
-        result.append(converted_entry)
+    results = []
+    for key, query_data in data.items():
+        try:
+            result = convert_to_sharegpt(query_data)
+            results.append(result)
+        except Exception as e:
+            print(f"Error processing key {key}: {str(e)}")
+            continue
     
-    with open(output_file, 'w') as f:
-        json.dump(result, f, indent=2)
+    with open('sft_data/teval_sharegpt_format.json', 'w', encoding='utf-8') as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    
+
+
 
 if __name__ == "__main__":
-    # convert_to_sft_format_reason('teval/reason_str_v2.json', 'sft_data/sft_teval_reason.json')
-    # convert_to_sft_format_retrieve('teval/retrieve_str_v2.json', 'sft_data/stf_teval_retrieve.json')
-    # convert_to_sft_format_plan('teval/plan_json_v2.json', 'sft_data/stf_teval_plan.json')
-    convert_to_sft_format_instruct('teval/instruct_v2.json', 'sft_data/stf_teval_ins.json')
-
+    process_Ins_json_file('teval/instruct_v2.json')

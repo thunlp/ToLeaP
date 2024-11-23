@@ -37,8 +37,7 @@ python src/scripts/Toollens_eval.py --topk List[Int] --ground_truth_u_i List --p
 
  **BFCL Evaluation**   
  ```
-有点小复杂 首先cd /bohi/BodhiAgent/src/scripts/bfcl and pip install -e .
-then cd .. (toward scripts section)
+有点小复杂 首先cd BodhiAgent/src/scripts and pip install -e .
 then ./bfcl_eval.sh
 输入model name like Llama-3.1-8B-Instruct （具体支持什么在/bohi/BodhiAgent/src/scripts/bfcl/model_handler/handler_map.py） 可以查看
  ```

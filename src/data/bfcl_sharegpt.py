@@ -68,6 +68,86 @@ def sft_simple(input_file, output_file, ground_truth_file):
     
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
+        
+
+def sft_parallel(input_file, output_file, ground_truth_file):
+    with open(input_file, 'r') as f:
+        data = [json.loads(line) for line in f]
+
+    with open(ground_truth_file, 'r') as f:
+        ground_truth_lines = f.readlines()
+        ground_truth_data = {json.loads(line)["id"]: json.loads(line) for line in ground_truth_lines}
+
+    result = []
+    for entry in data:
+        conversations = []
+        system_prompt = (
+            "You are an expert in composing functions. You are given a question and a set of possible functions. "
+            "Based on the question, you will need to make one or more function/tool calls to achieve the purpose. \n"
+            "If none of the function can be used, point it out. If the given question lacks the parameters required "
+            "by the function, also point it out.\n"
+            "You should only return the function calls in your response.\n"
+            "If you decide to invoke any of the function(s), you MUST put it in the format of "
+            "[func_name1(params_name1=params_value1, params_name2=params_value2...), func_name2(params)] \n"
+            "You SHOULD NOT include any other text in the response. \n"
+            "At each turn, your should try your best to complete the tasks requested by the user within the current turn. "
+            "Continue to output functions to call until you have fulfilled the user's request to the best of your ability. "
+            "Once you have no more functions to call, the system will consider the current turn complete and proceed to "
+            "the next turn or task."
+        )
+        tool_description = json.dumps(entry.get("function", []))
+
+        # Get the original question
+        original_question = ""
+        for qa_pair in entry.get("question", []):
+            for q in qa_pair:
+                if q["role"] == "user":
+                    original_question = q["content"]
+                    break
+
+        # Get ground truth for the current entry
+        ground_truth_entry = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
+
+        # Directly append the ground truth as a single conversation
+        conversations.append({
+            "from": "human",
+            "value": original_question
+        })
+
+        function_calls = []
+        for gt in ground_truth_entry:
+            function_name = list(gt.keys())[0]
+            function_arguments = gt[function_name]
+            function_calls.append({
+                "name": function_name,
+                "arguments": function_arguments
+            })
+
+        conversations.extend([
+            {
+                "from": "function_call",
+                "value": json.dumps(function_calls)
+            },
+            {
+                "from": "observation",
+                "value": ""
+            },
+            {
+                "from": "gpt",
+                "value": json.dumps(function_calls)
+            }
+        ])
+
+        converted_entry = {
+            "conversations": conversations,
+            "system": system_prompt,
+            "tools": tool_description
+        }
+        result.append(converted_entry)
+
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=2)
+
 
 def sft_irrelevance(input_file, output_file):
     with open(input_file, 'r') as f:
@@ -109,16 +189,8 @@ def sft_irrelevance(input_file, output_file):
             # Add function call sequence
             conversations.extend([
                 {
-                    "from": "function_call",
-                    "value": json.dumps([function_call_value])
-                },
-                {
-                    "from": "observation",
-                    "value": ""
-                },
-                {
                     "from": "gpt",
-                    "value": json.dumps([function_call_value])
+                    "value": ""
                 }
             ])
         
@@ -206,14 +278,14 @@ if __name__ == "__main__":
     input_prefix = sys.argv[1]
     if input_prefix == 'ast':
         sft_simple(f'bfcl/BFCL_v3_simple.json', f'sft_data/sft_bfcl_simple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel.json', f'sft_data/sft_bfcl_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
+        sft_parallel(f'bfcl/BFCL_v3_parallel.json', f'sft_data/sft_bfcl_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
         sft_simple(f'bfcl/BFCL_v3_multiple.json', f'sft_data/sft_bfcl_multiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/sft_bfcl_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
+        sft_parallel(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/sft_bfcl_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
         sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'sft_data/sft_bfcllive_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
+        sft_parallel(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
         sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/sft_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
+        sft_parallel(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
         sft_irrelevance(f'bfcl/BFCL_v3_live_irrelevance.json', f'sft_data/sft_bfcllive_irrelvance.json')
-        sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfclirrelvance.json')
+        sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfcl_irrelevance.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')
