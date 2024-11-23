@@ -1,5 +1,6 @@
 import json
 import re
+import ast
 def convert_to_sft_format_instruct(input_file, output_file):
     with open(input_file, 'r') as f:
         data = json.load(f)
@@ -8,7 +9,6 @@ def convert_to_sft_format_instruct(input_file, output_file):
     for key, entry in data.items():
         conversations = []
         system_prompt = ""
-        tool_description = ""
 
         origin_prompt = entry.get("origin_prompt", [])
         for prompt in origin_prompt:
@@ -17,26 +17,38 @@ def convert_to_sft_format_instruct(input_file, output_file):
             elif prompt["role"] == "user":
                 conversations.append({"from": "human", "value": prompt["content"]})
         
-        # Extract the ground_truth in the desired format
         ground_truth = entry.get("ground_truth", {})
         function_call_value = {
             "name": ground_truth.get("action", ""),
             "arguments": ground_truth.get("args", {})
         }
+        
         conversations.append({"from": "function_call", "value": json.dumps(function_call_value)})
         conversations.append({"from": "observation", "value": ""})
         conversations.append({"from": "gpt", "value": json.dumps(function_call_value)})
         
-        # Extract and format tool description as a list in string format
-        tool_description_content = entry.get("origin_prompt", [])[0]["content"].split('API:')[1].split('Please directly generate')[0].strip()
-        tool_description = f"[{tool_description_content}]"
+        tool_description = entry.get("origin_prompt", [])[0]["content"]
+        # Extract the tool description part
+        tool_description = tool_description.split('API:')[1].split('Please directly generate')[0].strip()
         
-        converted_entry = {
+        # Convert single quotes to valid JSON format
+        try:
+            system_dict = ast.literal_eval(system_prompt)
+            system_prompt = json.dumps(system_dict)
+        except:
+            pass
+
+        try:
+            tools_dict = ast.literal_eval(tool_description)
+            tool_description = json.dumps(tools_dict)
+        except:
+            tool_description = ''
+
+        result.append({
             "conversations": conversations,
             "system": system_prompt,
             "tools": tool_description
-        }
-        result.append(converted_entry)
+        })
     
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
