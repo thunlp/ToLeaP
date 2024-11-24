@@ -88,8 +88,13 @@ if __name__ == "__main__":
         f1_score = f1(parsed_names, label_names)
         avg_node_f1 += f1_score
         # Edge F1
-        label_edges = [f"{label[i]['name']} - {label[i+1]['name']}" for i in range(len(label) - 1)]
-        parsed_edges = [f"{parsed[i][0]} - {parsed[i+1][0]}" for i in range(len(parsed) - 1)]
+        if len(label) > 1 and len(parsed) > 1:
+            label_edges = [f"{label[i]['name']} - {label[i+1]['name']}" for i in range(len(label) - 1)]
+            parsed_edges = [f"{parsed[i][0]} - {parsed[i+1][0]}" for i in range(len(parsed) - 1)]
+        else:
+            # If only one item, use same logic as node F1
+            label_edges = label_names
+            parsed_edges = parsed_names
         f1_score = f1(parsed_edges, label_edges)
         avg_edge_f1 += f1_score
 
