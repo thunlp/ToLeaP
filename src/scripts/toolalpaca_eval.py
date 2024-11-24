@@ -49,17 +49,17 @@ if __name__ == "__main__":
     instances = json.load(open(args.data_file, "r"))
     full_results = [json.loads(line) for line in open(args.eval_file, "r")]
     error_stats = {
-        "parsing_error": 0,
-        "correct": 0,
+        "process_correct": 0,
+        "final_correct": 0,
         "incorrect": 0,
-        "uncertain": 0,
     }
 
     print("Running evaluation...")
+    output_file = open("gpt4_responses.txt", "w")
     for result, instance in tqdm(zip(full_results, instances)):
         answers = parse_assistant_response(result["predict"])
         if len(answers) == 0:
-            error_stats["parsing_error"] += 1
+            error_stats["incorrect"] += 1
             continue
         solution = "Function: {}\nAction Input: {}".format(answers["action"], answers["action_input"])
         gold_answer = json.loads(instance["conversations"][1]["value"])
@@ -81,8 +81,9 @@ if __name__ == "__main__":
                 print(f"Error occurred during evaluation: {str(e)}. Retrying...")
         # Extract evaluation results from GPT-4's response
         eval_text = response.choices[0].message.content
-        process_correct = "No"
-        final_correct = "No"
+        output_file.write(eval_text + "\n---\n")
+        process_correct = "404"
+        final_correct = "404"
         
         for line in eval_text.split('\n'):
             if "Process Correctness:" in line:
@@ -91,11 +92,17 @@ if __name__ == "__main__":
                 final_correct = line.split(':')[1].strip()
         
         if process_correct.lower() == "yes" and final_correct.lower() == "yes":
-            error_stats["correct"] += 1
-        elif process_correct.lower() == "no" or final_correct.lower() == "no":
-            error_stats["incorrect"] += 1
+            error_stats["process_correct"] += 1
+            error_stats["final_correct"] += 1
+        elif process_correct.lower() == "yes":
+            error_stats["process_correct"] += 1
+        elif final_correct.lower() == "yes":
+            error_stats["final_correct"] += 1
         else:
-            error_stats["uncertain"] += 1
+            error_stats["incorrect"] += 1
+        
         # print(response.choices[0].message.content)
-    
+
+    output_file.flush()
+    output_file.close()
     print(error_stats)
