@@ -1,8 +1,8 @@
 
 #dowload RoTBench
 mkdir -p sft_data
+mkdir -p sft_data/APIBANK
 git clone https://huggingface.co/datasets/liminghao1630/API-Bank
-
 cd API-Bank
 
 
@@ -17,7 +17,5 @@ python ../APIBANK_sharegpt.py
 cd ../
 rm -rf API-Bank
 
-#move data to sft_data
-# cp -r RoTBenchData sft_data
-# rm -rf RoTBenchData
+
 
