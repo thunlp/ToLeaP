@@ -48,12 +48,14 @@ if __name__ == "__main__":
         print("Data file directory do not exist, please check and retry")
         exit
     current_dir = os.getcwd()
-    save_dir = "..\\..\\sft_data\\RoTBench" #Get Save Path
+    save_dir = "../../sft_data/RoTBench" #Get Save Path
+
     folders = [f for f in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, f))]
     for current_dir in folders:
         json_files =  glob.glob(os.path.join(current_dir, "*.json"))
         for file_path in json_files:
-                file_name_N = save_dir+ "\\new_" + current_dir + os.path.basename(file_path)
+                file_name_N = save_dir+ "/new_" + current_dir + os.path.basename(file_path)
+
                 try:
                     if current_dir == "First_Turn":
                         dataNew = transferSharegpt(file_path)

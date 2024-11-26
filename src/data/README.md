@@ -14,11 +14,12 @@ cd BodhiAgent/src/data
 ./teval.sh
 ```
 
-To download **RoTBenc** and deal with Datasets
+To download **RoTBench** datasets and transform them into sharegpt format:
 ```
-cd ./BodhiAgent/src/data
-./RoTBench.sh
+cd BodhiAgent/src/data
+bash RoTBench.sh
 ```
+There will be 10 sharegpt format datasets stored under teh folder `data/sft_data/RoTbench`. 
 
 To download **Toollens** and deal with Datasets
 ```
@@ -30,11 +31,11 @@ To download the **MetaTool** dataset and transform it into sharegpt format:
 ```
 bash MetaTool.sh
 ```
-The sharegpt format dataset `multi_tool_query_golden.json` will be found under the folder `data/sft_data`.
+The sharegpt format dataset `MetaTool_processed.json` will be found under the folder `data/sft_data`.
 
 To download **RestGPT** datasets and transform them into sharegpt format:
 ```
-bash MetaTool.sh
+bash RestGPT.sh
 ```
 The sharegpt format datasets `spotify_processed.json` and `tmdb_processed.json` will be found under the folder `data/sft_data`.
 
