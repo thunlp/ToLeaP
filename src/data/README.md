@@ -18,11 +18,12 @@ cd data
 run teval_sharegpt.py 
 ```
 
-To download **RoTBenc** and deal with Datasets
+To download **RoTBenc** datasets and transform them into sharegpt format:
 ```
-cd ./BodhiAgent/src/data
-./RoTBench.sh
+cd BodhiAgent/src/data
+bash RoTBench.sh
 ```
+There will be 10 sharegpt format datasets stored under teh folder `data/sft_data/RoTbench`. 
 
 To download **Toollens** and deal with Datasets
 ```
