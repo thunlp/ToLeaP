@@ -30,6 +30,11 @@ NESTED_CONVERSION_TYPE_LIST = ["Array", "ArrayList", "array"]
 def ast_checker(
     func_description, model_output, possible_answer, language, test_category, model_name
 ):
+    # print(func_description)
+    # print(model_output)
+    # print(possible_answer)
+    # print(test_category)
+
     if "parallel" in test_category:
         return parallel_function_checker_no_order(
             func_description, model_output, possible_answer, language, model_name
@@ -419,6 +424,7 @@ def simple_function_checker(
         elif language == "Python":
             expected_type_converted = PYTHON_TYPE_MAPPING[expected_type_description]
             if expected_type_description in PYTHON_NESTED_TYPE_CHECK_LIST:
+                # print(param_details)
                 nested_type = param_details[param]["items"]["type"]
                 nested_type_converted = PYTHON_TYPE_MAPPING[nested_type]
 

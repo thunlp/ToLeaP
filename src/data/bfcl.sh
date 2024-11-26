@@ -18,6 +18,8 @@ mkdir -p sft_data
 
 echo "The bfcl has been downloaded..."
 
-python bfcl_sharegpt.py all
+python bfcl_sharegpt.py ast
+
+rm -rf bfcl
 
 echo "The bfcl has been transformed into sharegpt format..."

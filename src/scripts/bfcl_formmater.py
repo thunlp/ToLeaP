@@ -23,6 +23,7 @@ def parse_action_input(text):
 def parse_label(label_str):
     try:
         label_data = json.loads(label_str)
+        print(label_data)
         if isinstance(label_data, list):
             return label_data
         return [label_data]
@@ -35,7 +36,6 @@ def transform_line(line, id_prefix="simple"):
         actions = []
 
         if "predict" in data:
-            # Try to directly parse the predict field if it's already in the desired format
             try:
                 predict_data = json.loads(data["predict"])
                 if isinstance(predict_data, list):
@@ -43,10 +43,8 @@ def transform_line(line, id_prefix="simple"):
                 else:
                     actions = [predict_data]
             except json.JSONDecodeError:
-                # If direct parsing fails, try to parse as action input format
                 actions = parse_action_input(data["predict"])
                 
-            # If no actions found and label exists, use label as fallback
             if not actions and "label" in data:
                 label_actions = parse_label(data["label"])
                 if label_actions:
@@ -80,8 +78,10 @@ def transform_line(line, id_prefix="simple"):
             "result": result
         }
     except Exception as e:
-        print(f"Error processing line: {e}")
-        return None
+        return {
+            'id': id_value,
+            'result': data["predict"]
+        }
 
 def transform_jsonl(input_file, output_file, id_prefix="simple"):
     with open(input_file, 'r', encoding='utf-8') as f_in, \
@@ -166,8 +166,8 @@ def transform_jsonl_irr(input_file, output_file, id_prefix="simple"):
                 
                 
                 
-transform_jsonl('bfcl_simple.jsonl', 'BFCL_v3_simple.json', id_prefix='simple') 
-transform_jsonl('bfcl_parallel.jsonl', 'BFCL_v3_parallel.json', id_prefix='parallel') 
+# transform_jsonl('bfcl_simple.jsonl', 'BFCL_v3_simple.json', id_prefix='simple') 
+# transform_jsonl('bfcl_parallel.jsonl', 'BFCL_v3_parallel.json', id_prefix='parallel') 
 transform_jsonl('bfcl_multiple.jsonl', 'BFCL_v3_multiple.json', id_prefix='multiple') 
-transform_jsonl('bfcl_parallel_multiple.jsonl', 'BFCL_v3_parallel_multiple.json', id_prefix='parallel_multiple') 
-transform_jsonl_irr('bfcl_irrelevance.jsonl', 'BFCL_v3_irrelevance.json', id_prefix='irrelevance') 
+# transform_jsonl('bfcl_parallel_multiple.jsonl', 'BFCL_v3_parallel_multiple.json', id_prefix='parallel_multiple') 
+# transform_jsonl_irr('bfcl_irrelevance.jsonl', 'BFCL_v3_irrelevance.json', id_prefix='irrelevance') 

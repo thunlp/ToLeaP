@@ -337,11 +337,13 @@ def relevance_file_runner(handler, model_result, prompt, model_name, test_catego
     return accuracy, len(model_result)
 
 
+# model_result, prompt, possible_answer 都是一个file 就行 user 后面的就是 prompt 然后 possible answer 是label， model asnwe是 peridct
+#传入就是一整个大的json
 def ast_file_runner(
     handler, model_result, prompt, possible_answer, language, test_category, model_name
 ):
-    print(prompt[0])
-    print('-------------------')
+    # print(model_result[-1])
+    # print(possible_answer[-1])
     assert (
         len(model_result) == len(prompt) == len(possible_answer)
     ), f"The length of the model result ({len(model_result)}) does not match the length of the prompt ({len(prompt)}) or possible answer ({len(possible_answer)}). Please check the input files for completeness."
@@ -485,10 +487,13 @@ def runner(model_names, test_categories, api_sanity_check):
             print(f"🔍 Running test: {test_category}")
 
             model_result = load_file(model_result_json)
+            # print(model_result)
+            # print(type(model_result[0]))
 
             prompt_file = find_file_with_suffix(PROMPT_PATH, test_category)
             prompt = load_file(prompt_file)
 
+            # prompt 就是 直接就是用 jsonl的就行
 
             if is_relevance_or_irrelevance(test_category):
                 accuracy, total_count = relevance_file_runner(
@@ -561,7 +566,7 @@ def runner(model_names, test_categories, api_sanity_check):
                 print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
             # Single turn test
             else:
-                print(prompt[5])
+                print(prompt[0])
                 accuracy, total_count = ast_file_runner(
                     handler,
                     model_result,
@@ -626,29 +631,188 @@ def get_handler(model_name):
     )  # Temperature doesn't matter for evaluation
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process two lists of strings.")
 
-    # Add arguments for two lists of strings
-    parser.add_argument(
-        "--model", nargs="+", type=str, help="A list of model names to evaluate"
-    )
-    parser.add_argument(
-        "--test-category",
-        nargs="+",
-        type=str,
-        help="A list of test categories to run the evaluation on",
-    )
-    parser.add_argument(
-        "-c",
-        "--api-sanity-check",
-        action="store_true",
-        default=False,  # Default value is False, meaning the sanity check is skipped unless the flag is specified
-        help="Perform the REST API status sanity check before running the evaluation. By default, the sanity check is skipped.",
-    )
+import json
+import re
 
-    args = parser.parse_args()
-
-    # load_dotenv(dotenv_path=DOTENV_PATH, verbose=True, override=True)  # Load the .env file
+def process_jsonl(file_path):
+    """Process a JSONL file and return three lists: prompts, results, and ground_truths"""
+    prompts = []
+    results = []
+    ground_truths = []
     
-    main(args.model, args.test_category, args.api_sanity_check)
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in enumerate(file):
+            if not line[1].strip():
+                continue
+            
+            data = json.loads(line[1].strip())
+            
+            # Transform original data to new format
+            new_data = {
+                'question': [[{'role': 'user', 'content': extract_user_prompt(data['prompt'])}]],
+                'function': []
+            }
+            
+            # Extract function information from the original prompt
+            system_part = data['prompt'].split('user\n\n')[0]
+            tool_matches = re.findall(r'Tool Name: (.*?)\nTool Description: (.*?)\nTool Args:(.*?)(?=\n\n|$)', 
+                                    system_part, re.DOTALL)
+            
+            for tool_name, description, args in tool_matches:
+                param_matches = re.findall(r'-\s+(\w+)\s+\(([\w,\s]+)(?:,\s*required)?\):\s*(.*?)(?=\n|$)', args, re.DOTALL)
+                properties = {}
+                required_params = []
+                
+                for param_name, param_type, param_desc in param_matches:
+                    # Clean up param_type by removing any "required" text
+                    clean_type = param_type.split(',')[0].strip()
+                    
+                    # Check if parameter is required
+                    if 'required' in param_type:
+                        required_params.append(param_name)
+                    
+                    # Check for enum values in description
+                    enum_match = re.search(r"Allowed values: '(.*?)'", param_desc)
+                    if enum_match:
+                        enum_values = [val.strip("'") for val in enum_match.group(1).split("', '")]
+                        properties[param_name] = {
+                            'type': clean_type,
+                            'description': param_desc.strip(),
+                            'enum': enum_values
+                        }
+                    # Check if parameter description contains items information
+                    elif clean_type == 'array' and 'where each item should be' in param_desc:
+                        properties[param_name] = {
+                            'type': 'array',
+                            'items': {
+                                'type': 'string'  # or extract from description if needed
+                            },
+                            'description': param_desc.strip()
+                        }
+                    else:
+                        properties[param_name] = {
+                            'type': clean_type,
+                            'description': param_desc.strip()
+                        }
+                
+                new_data['function'].append({
+                    'name': tool_name.strip(),
+                    'description': description.strip(),
+                    'parameters': {
+                        'type': 'dict',
+                        'properties': properties,
+                        'required': required_params
+                    }
+                })
+            
+            prompts.append(new_data)
+            
+            # Extract and process label (ground truth)
+            if 'label' in data:
+                label_actions = parse_label(data['label'])
+                if label_actions:
+                    ground_truth = []
+                    for action in label_actions:
+                        ground_truth.append({
+                            action['name']: action['arguments']
+                        })
+                    ground_truths.append({
+                        'ground_truth': ground_truth
+                    })
+                else:
+                    ground_truths.append({
+                        'ground_truth': []
+                    })
+            else:
+                ground_truths.append({
+                    'ground_truth': []
+                })
+            
+            # Extract and format result
+            if 'predict' in data:
+                try:
+                    predict_data = json.loads(data['predict'])
+                    if isinstance(predict_data, list):
+                        actions = predict_data
+                    else:
+                        actions = [predict_data]
+                except json.JSONDecodeError:
+                    actions = parse_action_input(data['predict'])
+                
+                action_strings = []
+                if actions:
+                    for action in actions:
+                        args = []
+                        for key, values in action['arguments'].items():
+                            if isinstance(values, list) and values:
+                                value = values[0]
+                                if isinstance(value, str):
+                                    if not value:
+                                        continue
+                                    args.append(f"{key}='{value}'")
+                                else:
+                                    args.append(f"{key}={value}")
+                        action_strings.append(f"{action['name']}({', '.join(args)})")
+                
+                results.append({
+                    'result': '[' + ', '.join(action_strings) + ']' if action_strings else '[]'
+                })
+            else:
+                results.append({
+                    'result': '[]'
+                })
+    
+    return prompts, results, ground_truths
+
+def extract_user_prompt(prompt_text):
+    """Extract the text between 'user' and first 'assistant' markers"""
+    parts = prompt_text.split('\nuser\n\n')
+    if len(parts) >= 2:
+        user_part = parts[1].split('\nAction')[0]
+        user_part = user_part.split('assistant')[0]
+        return user_part.strip()
+    return prompt_text
+
+def parse_label(label_str):
+    """Parse label string into structured format"""
+    try:
+        label_data = json.loads(label_str)
+        if isinstance(label_data, list):
+            return label_data
+        return [label_data]
+    except json.JSONDecodeError:
+        return None
+
+def parse_action_input(text):
+    """Parse action input text into structured format"""
+    actions = []
+    pattern = r'Action: (.*?)\nAction Input: ({.*?})'
+    matches = re.findall(pattern, text)
+    for func_name, params in matches:
+        try:
+            params_dict = json.loads(params)
+            arguments = {k: [v] if not isinstance(v, list) else v
+                        for k, v in params_dict.items()}
+            actions.append({
+                "name": func_name,
+                "arguments": arguments
+            })
+        except json.JSONDecodeError:
+            continue
+    return actions
+
+
+
+
+
+
+handler = get_handler('Llama-3.1-8B-Instruct')
+# prompt, model_result, possible_answer = process_jsonl('gp_ToolACE_sharegpt.jsonl')
+prompt, model_result, possible_answer = process_jsonl('bfcl_multiple.jsonl')
+# prompt, model_result, possible_answer = process_jsonl('bfcl_parallel.jsonl')
+language = 'Python'
+test_category = 'parallel'
+model_name = 'Llama-3.1-8B-Instruct'
+accuracy, total_count = ast_file_runner(handler,model_result,prompt,possible_answer,language,test_category,model_name)
+print(accuracy)

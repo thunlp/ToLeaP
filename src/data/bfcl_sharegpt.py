@@ -45,14 +45,14 @@ def sft_simple(input_file, output_file, ground_truth_file):
             
             # Add function call sequence
             conversations.extend([
-                {
-                    "from": "function_call",
-                    "value": json.dumps([function_call_value])
-                },
-                {
-                    "from": "observation",
-                    "value": ""
-                },
+                # {
+                #     "from": "function_call",
+                #     "value": json.dumps([function_call_value])
+                # },
+                # {
+                #     "from": "observation",
+                #     "value": ""
+                # },
                 {
                     "from": "gpt",
                     "value": json.dumps([function_call_value])
@@ -124,14 +124,14 @@ def sft_parallel(input_file, output_file, ground_truth_file):
             })
 
         conversations.extend([
-            {
-                "from": "function_call",
-                "value": json.dumps(function_calls)
-            },
-            {
-                "from": "observation",
-                "value": ""
-            },
+            # {
+            #     "from": "function_call",
+            #     "value": json.dumps(function_calls)
+            # },
+            # {
+            #     "from": "observation",
+            #     "value": ""
+            # },
             {
                 "from": "gpt",
                 "value": json.dumps(function_calls)
@@ -204,72 +204,75 @@ def sft_irrelevance(input_file, output_file):
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
 
-def sft_multi(input_file, output_file, ground_truth_file):
-    class_to_file_mapping = {
-        "TicketAPI": "ticket_api.json",
-        "GorillaFileSystem": "gorilla_file_system.json",
-        "VehicleControlAPI": "vehicle_control.json",
-        "MATHAPI": "math_api.json",
-        "MessageAPI": "message_api.json",
-        "TradingBot": "trading_bot.json",
-        "TwitterAPI": "posting_api.json",
-        "TravelAPI": "travel_booking.json"
-    }
 
-    with open(input_file, 'r') as f:
-        data = [json.loads(line) for line in f]
+def sft_exec():  #wait for examing how to do exec
+    pass
+# def sft_multi(input_file, output_file, ground_truth_file):
+#     class_to_file_mapping = {
+#         "TicketAPI": "ticket_api.json",
+#         "GorillaFileSystem": "gorilla_file_system.json",
+#         "VehicleControlAPI": "vehicle_control.json",
+#         "MATHAPI": "math_api.json",
+#         "MessageAPI": "message_api.json",
+#         "TradingBot": "trading_bot.json",
+#         "TwitterAPI": "posting_api.json",
+#         "TravelAPI": "travel_booking.json"
+#     }
+
+#     with open(input_file, 'r') as f:
+#         data = [json.loads(line) for line in f]
     
-    with open(ground_truth_file, 'r') as f:
-        ground_truth_lines = f.readlines()
-        ground_truth_data = {json.loads(line)["id"]: json.loads(line) for line in ground_truth_lines}
+#     with open(ground_truth_file, 'r') as f:
+#         ground_truth_lines = f.readlines()
+#         ground_truth_data = {json.loads(line)["id"]: json.loads(line) for line in ground_truth_lines}
     
-    result = []
-    for entry in data:
-        conversations = []
-        system_prompt = ""
-        tool_description = ""
+#     result = []
+#     for entry in data:
+#         conversations = []
+#         system_prompt = ""
+#         tool_description = ""
 
-        question = entry.get("question", [])
-        ground_truth_list = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
+#         question = entry.get("question", [])
+#         ground_truth_list = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
 
-        # Process each turn
-        for i, qa_pair in enumerate(question):
-            # Add human message
-            for q in qa_pair:
-                if q["role"] == "user":
-                    conversations.append({"from": "human", "value": q["content"]})
+#         # Process each turn
+#         for i, qa_pair in enumerate(question):
+#             # Add human message
+#             for q in qa_pair:
+#                 if q["role"] == "user":
+#                     conversations.append({"from": "human", "value": q["content"]})
             
-            # Add corresponding ground truth if available
-            if i < len(ground_truth_list):
-                ground_truth = ground_truth_list[i]
-                conversations.extend([
-                    {"from": "function_call", "value": json.dumps(ground_truth)},
-                    {"from": "observation", "value": ""},
-                    {"from": "gpt", "value": json.dumps(ground_truth)}
-                ])
+#             # Add corresponding ground truth if available
+#             if i < len(ground_truth_list):
+#                 ground_truth = ground_truth_list[i]
+#                 conversations.extend([
+#                     {"from": "function_call", "value": json.dumps(ground_truth)},
+#                     {"from": "observation", "value": ""},
+#                     {"from": "gpt", "value": json.dumps(ground_truth)}
+#                 ])
         
-        # Add tool description from involved_classes
-        involved_classes = entry.get("involved_classes", [])
-        tool_descriptions = []
-        for involved_class in involved_classes:
-            file_name = class_to_file_mapping.get(involved_class)
-            if file_name:
-                tool_file_path = os.path.join('bfcl', 'multi_turn_func_doc', file_name)
-                if os.path.exists(tool_file_path):
-                    with open(tool_file_path, 'r') as tool_file:
-                        tool_descriptions.extend([json.loads(line) for line in tool_file])
+#         # Add tool description from involved_classes
+#         involved_classes = entry.get("involved_classes", [])
+#         tool_descriptions = []
+#         for involved_class in involved_classes:
+#             file_name = class_to_file_mapping.get(involved_class)
+#             if file_name:
+#                 tool_file_path = os.path.join('bfcl', 'multi_turn_func_doc', file_name)
+#                 if os.path.exists(tool_file_path):
+#                     with open(tool_file_path, 'r') as tool_file:
+#                         tool_descriptions.extend([json.loads(line) for line in tool_file])
         
-        tool_description = json.dumps(tool_descriptions)
+#         tool_description = json.dumps(tool_descriptions)
         
-        converted_entry = {
-            "conversations": conversations,
-            "system": system_prompt,
-            "tools": tool_description
-        }
-        result.append(converted_entry)
+#         converted_entry = {
+#             "conversations": conversations,
+#             "system": system_prompt,
+#             "tools": tool_description
+#         }
+#         result.append(converted_entry)
     
-    with open(output_file, 'w') as f:
-        json.dump(result, f, indent=2)
+#     with open(output_file, 'w') as f:
+#         json.dump(result, f, indent=2)
 
 
 
