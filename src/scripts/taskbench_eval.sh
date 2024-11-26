@@ -6,10 +6,10 @@ echo "Input data path: $1"
 echo "YAML config path: $2" 
 echo "Model name/path: $3"
 
-cp $1 llamafactory_data/toolalpaca.json
+cp $1 llamafactory_data/taskbench.json
 
 # Run evaluation with provided arguments
-python toolalpaca_eval.py \
+python taskbench_eval.py \
     --config $2 \
     --input_file $1 \
     --model_name $3
