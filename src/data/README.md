@@ -18,7 +18,7 @@ cd data
 run teval_sharegpt.py 
 ```
 
-To download **RoTBenc** datasets and transform them into sharegpt format:
+To download **RoTBench** datasets and transform them into sharegpt format:
 ```
 cd BodhiAgent/src/data
 bash RoTBench.sh
