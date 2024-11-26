@@ -53,7 +53,7 @@ if __name__ == "__main__":
     for current_dir in folders:
         json_files =  glob.glob(os.path.join(current_dir, "*.json"))
         for file_path in json_files:
-                file_name_N = save_dir+ "\\new_" + os.path.basename(file_path)
+                file_name_N = save_dir+ "\\new_" + current_dir + os.path.basename(file_path)
                 try:
                     if current_dir == "First_Turn":
                         dataNew = transferSharegpt(file_path)
