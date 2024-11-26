@@ -1,4 +1,15 @@
 from argparse import ArgumentParser
+from llamafactory.train.sft.workflow import run_sft
+from llamafactory.hparams import get_train_args
+from transformers import HfArgumentParser, Seq2SeqTrainingArguments
+from llamafactory.hparams.data_args import DataArguments
+from llamafactory.hparams.evaluation_args import EvaluationArguments
+from llamafactory.hparams.finetuning_args import FinetuningArguments
+from llamafactory.hparams.generating_args import GeneratingArguments
+from llamafactory.hparams.model_args import ModelArguments
+
+ALL_ARGS = [ModelArguments, DataArguments, Seq2SeqTrainingArguments, FinetuningArguments, GeneratingArguments]
+
 from utils.template import TOOLALPACA_EVAL
 from tqdm import tqdm
 from openai import OpenAI
@@ -10,8 +21,10 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"], base_url="https://toollear
 
 parser = ArgumentParser()
 # Llama Factory Sharegpt format, default is generated_predictions.jsonl
-parser.add_argument("--eval_file", type=str, required=True)
-parser.add_argument("--data_file", type=str, default="../data/sft_data/toolalpaca_eval_real_sharegpt.json")
+parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
+parser.add_argument("--input_file", type=str, required=True, help="Path to input file")
+parser.add_argument("--reference_file", type=str, required=True, help="Path to reference file")
+parser.add_argument("--model_name", type=str, default="meta-llama/Meta-Llama-3.1-8B-Instruct")
 
 def parse_assistant_response(text):
     # Initialize empty dictionary for results
@@ -45,9 +58,18 @@ def get_tools_text(text):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    yml_file = args.config
+    parser = HfArgumentParser(ALL_ARGS)
+    args = parser.parse_yaml_file(args.config)
+    model_args, data_args, training_args, finetuning_args, generating_args = get_train_args(args)
+    model_args.model_name_or_path = args.model_name
+    data_args.dataset_dir = 'llamafactory_data'
+    run_sft(model_args, data_args, training_args, finetuning_args, generating_args)
+
     eval_template = Template(TOOLALPACA_EVAL)
-    instances = json.load(open(args.data_file, "r"))
-    full_results = [json.loads(line) for line in open(args.eval_file, "r")]
+    output_file_path = os.path.join(model_args.output_dir, "generated_predictions.jsonl")
+    instances = json.load(open(output_file_path, "r"))
+    full_results = [json.loads(line) for line in open(args.input_file, "r")]
     error_stats = {
         "process_correct": 0,
         "final_correct": 0,
