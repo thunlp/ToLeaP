@@ -30,6 +30,8 @@ def convert_descriptions(function_descriptions):
     result = []
 
     for func_name, description in function_descriptions.items():
+        if func_name == "components":
+            continue
         # Extract function name and parameters
         desc_lines = description.split("\n")
         function_desc = desc_lines[0].strip()
@@ -70,10 +72,11 @@ def process_train(filename, output_filename, is_eval):
                 call_input = golden_answer[0]["Action_Input"]
                 try:
                     train_factory.append({
-                        "conversation": [
+                        "conversations": [
                             {"from": "human", "value": question},
                             {"from": "function_call", "value": json.dumps({"name": call_name, "arguments": json.loads(call_input)})}
-                        ]
+                        ],
+                        "tools": json.dumps(converted_funcs)
                     }) # Eval data only have question and golden function call
                 except:
                     discarded += 1
@@ -93,12 +96,13 @@ def process_train(filename, output_filename, is_eval):
                 final_output = golden_answer["output"]
                 try:
                     train_factory.append({
-                        "conversation": [
+                        "conversations": [
                             {"from": "human", "value": question},
                             {"from": "function_call", "value": json.dumps({"name": call_name, "arguments": json.loads(call_input)})},
                             {"from": "observation", "value": observation},
                             {"from": "gpt", "value": final_output}
-                        ]
+                        ],
+                        "tools": json.dumps(converted_funcs)
                     }) # Train data have question, function call, observation, and final output
                 except:
                     discarded += 1

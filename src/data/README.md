@@ -3,19 +3,15 @@
 To download **gorllia/bfcl** dataset
 
 ```
-cd BodhiAgent/src
-./data/bfcl.sh
-cd data
-run bfcl_sharegpt.py --{which json} to convert to stf dataset or just 'all'
+cd BodhiAgent/src/data
+./bfcl.sh
 ```
 
 To download **t-eval** dataset
 
 ```
-cd BodhiAgent/src
-./data/teval.sh
-cd data
-run teval_sharegpt.py 
+cd BodhiAgent/src/data
+./teval.sh
 ```
 
 To download **RoTBench** datasets and transform them into sharegpt format:

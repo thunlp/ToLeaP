@@ -6,7 +6,20 @@ rm -rf !(berkeley-function-call-leaderboard)
 cd berkeley-function-call-leaderboard || exit
 rm -rf !(data)
 
-mv data ../../../data/bfcl
+mv data ../../bfcl
 
-cd ../..
+
+cd ..
+cd ..
+
 rm -rf gorilla
+
+mkdir -p sft_data
+
+echo "The bfcl has been downloaded..."
+
+python bfcl_sharegpt.py ast
+
+rm -rf bfcl
+
+echo "The bfcl has been transformed into sharegpt format..."

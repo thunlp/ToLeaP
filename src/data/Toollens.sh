@@ -20,3 +20,8 @@ python ../../Toollens_sharegpt.py
 #Delete RoTBench
 cd ../../
 rm -rf COLT
+
+#move data to sft_data
+mkdir -p sft_data
+cp -r ToolLensData sft_data
+rm -rf ToolLensData
