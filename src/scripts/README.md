@@ -57,22 +57,20 @@ For example, you have obtained the sharegpt format toolalpaca datasets following
 ToolAlpaca measures process and response correctness using GPT-4. Template for evaluation can be found in `utils/template.py`. The final outcome is the percentage of "yes" outputs for both process and response correctness.
 
 **TaskBench Evaluation**  
-Follow instructions in LLaMA-Factory to first install the repo, then run the evaluation.
-```
-bash taskbench_eval.sh $INPUT $CONFIG $MODEL
-# example below
-bash taskbench_eval.sh sharegpt_data.json taskbench.yml meta-llama/Meta-Llama-3.1-8B-Instruct
-```
-`$INPUT` Path of the sharegpt taskbench file.
-`$CONFIG` Path of the yaml config file for LLaMA-Factory.
-`$MODEL` Model name or path.
+
+Follow instructions in [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main) to first install the repo, then run the evaluation with `bash taskbench_eval.sh $INPUT $CONFIG $MODEL`. The explaination of the configs are as the follows:
+- `$INPUT` Path of the sharegpt toolalpaca file.
+- `$CONFIG` Path of the yaml config file for LLaMA-Factory.
+- `$MODEL` Model name or path.
+
+For example, you have obtained the sharegpt format taskbench dataset following the instruction in the `data` folder. Under the conda enviroment `llamafactory` and set `export OPENAI_API_KEY="your-api-key-here"`, run `bash taskbench_eval.sh ../data/sft_data/taskbench_data.json llamafactory_data/taskbench.yml  meta-llama/Meta-Llama-3.1-8B-Instruct` to get the evaluation results.
 
 TaskBench measures action and action input separately.  
 *Action Evaluation*:
-**Node F1**: Measures f1 of the predicted sequence of actions against the ground truth. (Order insensitive)  
-**Edge F1**: Concatenate consecutive actions and compare against the ground truth. (Order sensitive)
+- **Node F1**: Measures f1 of the predicted sequence of actions against the ground truth. (Order insensitive)  
+- **Edge F1**: Concatenate consecutive actions and compare against the ground truth. (Order sensitive)
 
 *Action Input Evaluation*:
 Assume action input is a json object with key-value pairs. Keys are the parameter names and values are the parameter values.
-**Name F1**: Measures f1 of the predicted parameter names against the ground truth. (Order insensitive)  
-**Value F1**: Measures f1 of the predicted parameter values against the ground truth. (Order insensitive)
+- **Name F1**: Measures f1 of the predicted parameter names against the ground truth. (Order insensitive)  
+- **Value F1**: Measures f1 of the predicted parameter values against the ground truth. (Order insensitive)
