@@ -13,16 +13,15 @@
 
 4. **bfcl**
 
-   Please run `bash bfcl.sh` to download the bfcl datasets and transform it into sharegpt format. There will be 9 sharegpt format datasets named sft_bfcl*.json stored under the folder `data/sft_data`.
+   Please run `bash bfcl.sh` to download the bfcl datasets and transform them into sharegpt format. There will be 9 sharegpt format datasets named `sft_bfcl*.json` stored under the folder `data/sft_data`.
 
+5. **taskbench**
 
+   Please run `bash taskbench.sh` to download the taskbench dataset and transform it into sharegpt format. The sharegpt format dataset `taskbench_data.json` will be found under the folder `data/sft_data`.
 
-To download **t-eval** dataset
+6. **t-eval** 
 
-```
-cd BodhiAgent/src/data
-./teval.sh
-```
+   Please run `bash teval.sh` to download the teval datasets and transform them into sharegpt format. There will be ? sharegpt format datasets named `teval*.json` stored under the folder `data/sft_data`.
 
  
 
