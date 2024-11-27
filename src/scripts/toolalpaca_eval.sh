@@ -1,3 +1,5 @@
+export PYTHONPATH=$(pwd)/..
+
 # Arguments
 # $1: sharegpt data path
 # $2: yaml config for llama factory
