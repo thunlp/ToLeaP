@@ -37,7 +37,8 @@ python src/scripts/Toollens_eval.py --topk List[Int] --ground_truth_u_i List --p
 
  **BFCL Evaluation**   
  ```
-
+ path ：/BodhiAgent/src/scripts
+ 在配好VLLM host 后，可以直接 python bfcl_eval.py (不同数据及记得换一下data就行)
  ```
 
  **Teval Evaluation**  
