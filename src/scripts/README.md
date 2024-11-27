@@ -52,7 +52,7 @@ Follow instructions in [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory/
 - `$CONFIG` Path of the yaml config file for LLaMA-Factory.
 - `$MODEL` Model name or path.
 
-For example, you have obtained the sharegpt format toolalpaca datasets following the instruction in the `data` folder. Under the conda enviroment `llamafactory`, run `bash toolalpaca_eval.sh ../data/sft_data/toolalpaca_eval_real_sharegpt.json llamafactory_data/toolalpaca.yml meta-llama/Meta-Llama-3.1-8B-Instruct` to get the evaluation results.
+For example, you have obtained the sharegpt format toolalpaca datasets following the instruction in the `data` folder. Under the conda enviroment `llamafactory` and set `export OPENAI_API_KEY="your-api-key-here"`, run `bash toolalpaca_eval.sh ../data/sft_data/toolalpaca_eval_real_sharegpt.json llamafactory_data/toolalpaca.yml meta-llama/Meta-Llama-3.1-8B-Instruct` to get the evaluation results.
 
 ToolAlpaca measures process and response correctness using GPT-4. Template for evaluation can be found in `utils/template.py`. The final outcome is the percentage of "yes" outputs for both process and response correctness.
 
