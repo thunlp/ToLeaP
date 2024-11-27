@@ -1,13 +1,318 @@
-from bfcl.model_handler.constant import (
-    UNDERSCORE_TO_DOT,
-    JAVA_TYPE_CONVERSION,
-    JS_TYPE_CONVERSION,
-)
-from bfcl.eval_checker.ast_eval.type_convertor.java_type_converter import java_type_converter
-from bfcl.eval_checker.ast_eval.type_convertor.js_type_converter import js_type_converter
+import ast
 import re
 
-#### Constants ####
+UNDERSCORE_TO_DOT = [
+    "gpt-4o-2024-08-06-FC",
+    "gpt-4o-2024-05-13-FC",
+    "gpt-4o-mini-2024-07-18-FC",
+    "gpt-4-turbo-2024-04-09-FC",
+    "gpt-4-1106-preview-FC",
+    "gpt-4-0125-preview-FC",
+    "gpt-4-0613-FC",
+    "gpt-3.5-turbo-0125-FC",
+    "claude-3-opus-20240229-FC",
+    "claude-3-sonnet-20240229-FC",
+    "claude-3-5-sonnet-20240620-FC",
+    "claude-3-5-sonnet-20241022-FC",
+    "claude-3-haiku-20240307-FC",
+    "claude-3-5-haiku-20241022-FC",
+    "open-mistral-nemo-2407-FC",
+    "open-mixtral-8x22b-FC",
+    "mistral-large-2407-FC",
+    "mistral-large-2407-FC",
+    "mistral-small-2402-FC",
+    "mistral-small-2402-FC",
+    "gemini-1.5-pro-002-FC",
+    "gemini-1.5-pro-001-FC",
+    "gemini-1.5-flash-002-FC",
+    "gemini-1.5-flash-001-FC",
+    "gemini-1.0-pro-002-FC",
+    "meetkai/functionary-small-v3.1-FC",
+    "meetkai/functionary-small-v3.2-FC",
+    "meetkai/functionary-medium-v3.1-FC",
+    "NousResearch/Hermes-2-Pro-Llama-3-8B",
+    "NousResearch/Hermes-2-Pro-Llama-3-70B",
+    "NousResearch/Hermes-2-Pro-Mistral-7B",
+    "NousResearch/Hermes-2-Theta-Llama-3-8B",
+    "NousResearch/Hermes-2-Theta-Llama-3-70B",
+    "command-r-plus-FC",
+    "command-r-plus-FC-optimized",
+    "THUDM/glm-4-9b-chat",
+    "ibm-granite/granite-20b-functioncalling",
+    "yi-large-fc",
+]
+
+def resolve_ast_call(elem):
+    # Handle nested attributes for deeply nested module paths
+    func_parts = []
+    func_part = elem.func
+    while isinstance(func_part, ast.Attribute):
+        func_parts.append(func_part.attr)
+        func_part = func_part.value
+    if isinstance(func_part, ast.Name):
+        func_parts.append(func_part.id)
+    func_name = ".".join(reversed(func_parts))
+    args_dict = {}
+    for arg in elem.keywords:
+        output = resolve_ast_by_type(arg.value)
+        args_dict[arg.arg] = output
+    return {func_name: args_dict}
+
+
+def resolve_ast_by_type(value):
+    if isinstance(value, ast.Constant):
+        if value.value is Ellipsis:
+            output = "..."
+        else:
+            output = value.value
+    elif isinstance(value, ast.UnaryOp):
+        output = -value.operand.value
+    elif isinstance(value, ast.List):
+        output = [resolve_ast_by_type(v) for v in value.elts]
+    elif isinstance(value, ast.Dict):
+        output = {
+            resolve_ast_by_type(k): resolve_ast_by_type(v)
+            for k, v in zip(value.keys, value.values)
+        }
+    elif isinstance(
+        value, ast.NameConstant
+    ):  # Added this condition to handle boolean values
+        output = value.value
+    elif isinstance(
+        value, ast.BinOp
+    ):  # Added this condition to handle function calls as arguments
+        output = eval(ast.unparse(value))
+    elif isinstance(value, ast.Name):
+        output = value.id
+    elif isinstance(value, ast.Call):
+        if len(value.keywords) == 0:
+            output = ast.unparse(value)
+        else:
+            output = resolve_ast_call(value)
+    elif isinstance(value, ast.Tuple):
+        output = tuple(resolve_ast_by_type(v) for v in value.elts)
+    elif isinstance(value, ast.Lambda):
+        output = eval(ast.unparse(value.body[0].value))
+    elif isinstance(value, ast.Ellipsis):
+        output = "..."
+    elif isinstance(value, ast.Subscript):
+        try:
+            output = ast.unparse(value.body[0].value)
+        except:
+            output = ast.unparse(value.value) + "[" + ast.unparse(value.slice) + "]"
+    else:
+        raise Exception(f"Unsupported AST type: {type(value)}")
+    return output
+
+def decode_ast(result, language="Python"):
+    return default_decode_ast_prompting(result, language)
+
+def default_decode_ast_prompting(result, language="Python"):
+    result = result.strip("`\n ")
+    if not result.startswith("["):
+        result = "[" + result
+    if not result.endswith("]"):
+        result = result + "]"
+    decoded_output = ast_parse(result, language)
+    return decoded_output
+
+def ast_parse(input_str, language="Python"):
+    if language == "Python":
+        cleaned_input = input_str.strip("[]'")
+        parsed = ast.parse(cleaned_input, mode="eval")
+        extracted = []
+        if isinstance(parsed.body, ast.Call):
+            extracted.append(resolve_ast_call(parsed.body))
+        else:
+            for elem in parsed.body.elts:
+                assert isinstance(elem, ast.Call)
+                extracted.append(resolve_ast_call(elem))
+        return extracted
+    else:
+        raise NotImplementedError(f"Unsupported language: {language}")
+
+
+
+def is_function_calling_format_output(decoded_output):
+    # Ensure the output is a list of dictionaries
+    if type(decoded_output) == list:
+        for item in decoded_output:
+            if type(item) != dict:
+                return False
+        return True
+    return False
+
+def is_empty_output(decoded_output):
+    # This function is a patch to the ast decoder for relevance detection
+    # Sometimes the ast decoder will parse successfully, but the input doens't really have a function call
+    # [], [{}], and anything that is not in function calling format is considered empty (and thus should be marked as correct)
+    if not is_function_calling_format_output(decoded_output):
+        return True
+    if len(decoded_output) == 0:
+        return True
+    if len(decoded_output) == 1 and len(decoded_output[0]) == 0:
+        return True
+    return False
+
+
+
+def relevance_file_runner(model_result, prompt, model_name, test_category):
+    result = []
+    correct_count = 0
+    for i in range(len(model_result)):
+        model_result_item = model_result[i]["result"]
+        contain_func_call = False
+        decoded_result = None
+        decode_error = None
+
+        try:
+            decoded_result = decode_ast(model_result_item, language="Python")
+            contain_func_call = True
+            if is_empty_output(decoded_result):
+                contain_func_call = False
+
+        except Exception as e:
+            # Decode failed, which means the model output is not in valid function call format
+            contain_func_call = False
+            decode_error = str(e)
+
+        # irrelevance test means no function call outputted
+        if "irrelevance" in test_category:
+            success = not contain_func_call
+        else:
+            success = contain_func_call
+
+        if success:
+            correct_count += 1
+        else:
+            temp = {}
+            temp["id"] = i + 1
+            temp["model_name"] = model_name
+            temp["test_category"] = test_category
+            temp["valid"] = success
+            if "irrelevance" in test_category:
+                temp["error"] = [
+                    f"Valid syntax. Successfully decode AST when it should not."
+                ]
+                temp["error_type"] = "irrelevance_error:decoder_success"
+            else:
+                temp["error"] = [
+                    f"Invalid syntax. Failed to decode AST when it should have. {decode_error}"
+                ]
+                temp["error_type"] = "relevance_error:decoder_failed"
+            temp["prompt"] = prompt[i]
+            temp["model_result"] = model_result_item
+            temp["decoded_result"] = decoded_result
+
+            result.append(temp)
+
+    accuracy = correct_count / len(model_result)
+    result.insert(
+        0,
+        {
+            "accuracy": accuracy,
+            "correct_count": correct_count,
+            "total_count": len(model_result),
+        },
+    )
+    # output_file_name = f"{VERSION_PREFIX}_{test_category}_score.json"
+    # output_file_dir = SCORE_PATH / model_name
+    # write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
+
+    return accuracy, len(model_result)
+
+def ast_file_runner(model_result, prompt, possible_answer, language, test_categories, model_name):
+
+    assert (
+        len(model_result) == len(prompt) == len(possible_answer)
+    ), f"The length of the model result ({len(model_result)}) does not match the length of the prompt ({len(prompt)}) or possible answer ({len(possible_answer)}). Please check the input files for completeness."
+
+    result = []
+    correct_count = 0
+    for i in range(len(model_result)):
+        model_result_item = model_result[i]["result"]
+        prompt_item = prompt[i]["function"]
+        possible_answer_item = possible_answer[i]["ground_truth"]
+
+        try:
+            model_result_item_raw = model_result_item
+            model_result_item = decode_ast(model_result_item, language)
+        except Exception as e:
+            result.append(
+                {
+                    "id": i + 1,
+                    "model_name": model_name,
+                    "test_category": test_categories[i],
+                    "valid": False,
+                    "error": [f"Invalid syntax. Failed to decode AST. {str(e)}"],
+                    "error_type": "ast_decoder:decoder_failed",
+                    "prompt": prompt[i],
+                    "model_result_raw": model_result_item_raw,
+                    "possible_answer": possible_answer_item,
+                }
+            )
+            continue
+
+        decoder_output_valid = is_function_calling_format_output(model_result_item)
+        if not decoder_output_valid:
+            result.append(
+                {
+                    "id": i + 1,
+                    "model_name": model_name,
+                    "test_category": test_categories[i],
+                    "valid": False,
+                    "error": [
+                        "Did not output in the specified format. Note: the model_result is wrapped in a string to ensure json serializability."
+                    ],
+                    "error_type": "ast_decoder:decoder_wrong_output_format",
+                    "prompt": prompt[i],
+                    "model_result_raw": str(model_result_item_raw),
+                    "model_result_decoded": str(model_result_item),
+                    "possible_answer": possible_answer_item,
+                }
+            )
+            continue
+
+        checker_result = ast_checker(
+            prompt_item,
+            model_result_item,
+            possible_answer_item,
+            language,
+            test_categories[i],
+            model_name,
+        )
+        if checker_result["valid"]:
+            correct_count += 1
+        else:
+            temp = {}
+            temp["id"] = i + 1
+            temp["model_name"] = model_name
+            temp["test_category"] = test_categories[i]
+            temp["valid"] = checker_result["valid"]
+            temp["error"] = checker_result["error"]
+            temp["error_type"] = checker_result["error_type"]
+            temp["prompt"] = prompt[i]
+            temp["model_result_raw"] = model_result_item_raw
+            temp["model_result_decoded"] = model_result_item
+            temp["possible_answer"] = possible_answer_item
+            result.append(temp)
+
+    accuracy = correct_count / len(model_result)
+    result.insert(
+        0,
+        {
+            "accuracy": accuracy,
+            "correct_count": correct_count,
+            "total_count": len(model_result),
+        },
+    )
+    # output_file_name = f"{test_category}_score.json"
+    # output_file_dir = SCORE_PATH / model_name
+    # write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
+
+    return accuracy, len(model_result)
+
+
 PYTHON_TYPE_MAPPING = {
     "string": str,
     "integer": int,
@@ -30,10 +335,6 @@ NESTED_CONVERSION_TYPE_LIST = ["Array", "ArrayList", "array"]
 def ast_checker(
     func_description, model_output, possible_answer, language, test_category, model_name
 ):
-    # print(func_description)
-    # print(model_output)
-    # print(possible_answer)
-    # print(test_category)
 
     if "parallel" in test_category:
         return parallel_function_checker_no_order(
@@ -231,8 +532,6 @@ def list_checker(param: str, model_output: list, possible_answer: list):
 
 
 def dict_checker(param: str, model_output: dict, possible_answers: list):
-    # This function works for simple dictionaries, but not dictionaries with nested dictionaries.
-    # The current dataset only contains simple dictionaries, so this is sufficient.
 
     result = {"valid": False, "error": [], "error_type": "dict_checker:unclear"}
     for i in range(len(possible_answers)):
@@ -347,6 +646,7 @@ def simple_function_checker(
 
     func_name = convert_func_name(func_name, model_name)
 
+
     # Check if function name matches
     if func_name not in model_output:
         result["valid"] = False
@@ -379,54 +679,10 @@ def simple_function_checker(
         is_variable = False
         nested_type_converted = None
 
-        if language == "Java":
-            expected_type_converted = JAVA_TYPE_CONVERSION[expected_type_description]
-
-            if expected_type_description in JAVA_TYPE_CONVERSION:
-                if type(value) != str:
-                    result["valid"] = False
-                    result["error"].append(
-                        f"Incorrect type for parameter {repr(param)}. Expected type String, got {type(value).__name__}. Parameter value: {repr(value)}."
-                    )
-                    result["error_type"] = "type_error:java"
-                    return result
-
-                if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
-                    nested_type = param_details[param]["items"]["type"]
-                    nested_type_converted = JAVA_TYPE_CONVERSION[nested_type]
-                    value = java_type_converter(
-                        value, expected_type_description, nested_type
-                    )
-                else:
-                    value = java_type_converter(value, expected_type_description)
-
-        elif language == "JavaScript":
-            expected_type_converted = JS_TYPE_CONVERSION[expected_type_description]
-
-            if expected_type_description in JS_TYPE_CONVERSION:
-                if type(value) != str:
-                    result["valid"] = False
-                    result["error"].append(
-                        f"Incorrect type for parameter {repr(param)}. Expected type String, got {type(value).__name__}. Parameter value: {repr(value)}."
-                    )
-                    result["error_type"] = "type_error:js"
-                    return result
-
-                if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
-                    nested_type = param_details[param]["items"]["type"]
-                    nested_type_converted = JS_TYPE_CONVERSION[nested_type]
-                    value = js_type_converter(
-                        value, expected_type_description, nested_type
-                    )
-                else:
-                    value = js_type_converter(value, expected_type_description)
-
-        elif language == "Python":
-            expected_type_converted = PYTHON_TYPE_MAPPING[expected_type_description]
-            if expected_type_description in PYTHON_NESTED_TYPE_CHECK_LIST:
-                # print(param_details)
-                nested_type = param_details[param]["items"]["type"]
-                nested_type_converted = PYTHON_TYPE_MAPPING[nested_type]
+        expected_type_converted = PYTHON_TYPE_MAPPING[expected_type_description]
+        if expected_type_description in PYTHON_NESTED_TYPE_CHECK_LIST:
+            nested_type = param_details[param]["items"]["type"]
+            nested_type_converted = PYTHON_TYPE_MAPPING[nested_type]
 
         # We convert all tuple value to list when the expected type is tuple.
         # The conversion is necessary because any tuple in the possible answer would become a list after being processed through json.dump() and json.load().
@@ -510,40 +766,40 @@ def simple_function_checker(
     return result
 
 
-def parallel_function_checker_enforce_order(
-    func_descriptions: list,
-    model_output: list,
-    possible_answers: dict,
-    language: str,
-    model_name: str,
-):
-    if len(model_output) != len(possible_answers):
-        return {
-            "valid": False,
-            "error": ["Wrong number of functions."],
-            "error_type": "parallel_function_checker_enforce_order:wrong_count",
-        }
+# def parallel_function_checker_enforce_order(
+#     func_descriptions: list,
+#     model_output: list,
+#     possible_answers: dict,
+#     language: str,
+#     model_name: str,
+# ):
+#     if len(model_output) != len(possible_answers):
+#         return {
+#             "valid": False,
+#             "error": ["Wrong number of functions."],
+#             "error_type": "parallel_function_checker_enforce_order:wrong_count",
+#         }
 
-    func_name_list = list(possible_answers.keys())
-    possible_answers_list = []
+#     func_name_list = list(possible_answers.keys())
+#     possible_answers_list = []
 
-    for key, value in possible_answers.items():
-        possible_answers_list.append({key: value})
+#     for key, value in possible_answers.items():
+#         possible_answers_list.append({key: value})
 
-    for i in range(len(possible_answers_list)):
-        func_description = find_description(func_descriptions, func_name_list[i])
+#     for i in range(len(possible_answers_list)):
+#         func_description = find_description(func_descriptions, func_name_list[i])
         
-        result = simple_function_checker(
-            func_description,
-            model_output[i],
-            possible_answers_list[i],
-            language,
-            model_name,
-        )
-        if not result["valid"]:
-            return result
+#         result = simple_function_checker(
+#             func_description,
+#             model_output[i],
+#             possible_answers_list[i],
+#             language,
+#             model_name,
+#         )
+#         if not result["valid"]:
+#             return result
 
-    return {"valid": True, "error": []}
+#     return {"valid": True, "error": []}
 
 
 def parallel_function_checker_no_order(
@@ -630,7 +886,6 @@ def multiple_function_checker(
             "error_type": "multiple_function_checker:wrong_count",
         }
 
-    # possible_answers is a list of only one dictionary with only one key
     func_name_expected = list(possible_answers[0].keys())[0]
     func_description = find_description(func_descriptions, func_name_expected)
     return simple_function_checker(
@@ -640,3 +895,7 @@ def multiple_function_checker(
         language,
         model_name,
     )
+
+
+
+
