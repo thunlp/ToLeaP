@@ -46,15 +46,13 @@ python teval_eval.py
  ```
 
 **ToolAlpaca Evaluation**  
-Follow instructions in LLaMA-Factory to first install the repo, then run the evaluation.
-```
-bash toolalpaca_eval.sh $INPUT $CONFIG $MODEL
-# example below
-bash toolalpaca_eval.sh sharegpt_data.json toolalpaca.yml meta-llama/Meta-Llama-3.1-8B-Instruct
-```
-`$INPUT` Path of the sharegpt toolalpaca file.
-`$CONFIG` Path of the yaml config file for LLaMA-Factory.
-`$MODEL` Model name or path.
+
+Follow instructions in [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main) to first install the repo, then run the evaluation with `bash toolalpaca_eval.sh $INPUT $CONFIG $MODEL`. The explaination of the configs are as the follows:
+- `$INPUT` Path of the sharegpt toolalpaca file.
+- `$CONFIG` Path of the yaml config file for LLaMA-Factory.
+- `$MODEL` Model name or path.
+
+For example, you have obtained the sharegpt format toolalpaca datasets following the instruction in the `data` folder. Under the conda enviroment `llamafactory`, run `bash toolalpaca_eval.sh ../data/sft_data/toolalpaca_eval_real_sharegpt.json llamafactory_data/toolalpaca.yml meta-llama/Meta-Llama-3.1-8B-Instruct` to get the evaluation results.
 
 ToolAlpaca measures process and response correctness using GPT-4. Template for evaluation can be found in `utils/template.py`. The final outcome is the percentage of "yes" outputs for both process and response correctness.
 
