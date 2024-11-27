@@ -1,2 +1,2 @@
 mkdir -p sft_data
-python process_taskbench.py
+python taskbench_sharegpt.py
