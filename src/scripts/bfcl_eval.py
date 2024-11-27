@@ -121,4 +121,4 @@ def evaluation(file_path):
     # metric, _ = metric_cal_irr_bfcl(model_output, prompt, test_categories, model_name)
     return metric 
 
-print(evaluation('sft_bfcl_parallel.json'))
+print(evaluation('BodhiAgent/src/data/sft_data/sft_bfcl_parallel.json'))
