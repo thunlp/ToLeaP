@@ -1,6 +1,9 @@
 from bfcl_utlis import ast_file_runner,relevance_file_runner
 import json
-from  utils.sharegpt_inference import LLM
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))
+
+from utils.sharegpt_inference import LLM
 
 model_path='/hy-tmp/3.1-8B'
 
