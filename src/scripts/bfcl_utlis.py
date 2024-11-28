@@ -1,5 +1,42 @@
 import ast
 import re
+from java_type_converter import java_type_converter
+from js_type_converter import js_type_converter
+import os
+import json
+from java_parser import parse_java_function_call
+from js_parser import parse_javascript_function_call
+
+JAVA_TYPE_CONVERSION = {
+    "byte": int,
+    "short": int,
+    "integer": int,
+    "float": float,
+    "double": float,
+    "long": int,
+    "boolean": bool,
+    "char": str,
+    "Array": list,
+    "ArrayList": list,
+    "Set": set,
+    "HashMap": dict,
+    "Hashtable": dict,
+    "Queue": list,  # this can be `queue.Queue` as well, for simplicity we check with list
+    "Stack": list,
+    "String": str,
+    "any": str,
+}
+
+JS_TYPE_CONVERSION = {
+    "String": str,
+    "integer": int,
+    "float": float,
+    "Bigint": int,
+    "Boolean": bool,
+    "dict": dict,
+    "array": list,
+    "any": str,
+}
 
 UNDERSCORE_TO_DOT = [
     "gpt-4o-2024-08-06-FC",
@@ -128,6 +165,12 @@ def ast_parse(input_str, language="Python"):
                 assert isinstance(elem, ast.Call)
                 extracted.append(resolve_ast_call(elem))
         return extracted
+    elif language == "Java":
+        return parse_java_function_call(
+            input_str[1:-1]
+        )  # Remove the [ and ] from the string
+    elif language == "JavaScript":
+        return parse_javascript_function_call(input_str[1:-1])
     else:
         raise NotImplementedError(f"Unsupported language: {language}")
 
@@ -679,10 +722,53 @@ def simple_function_checker(
         is_variable = False
         nested_type_converted = None
 
-        expected_type_converted = PYTHON_TYPE_MAPPING[expected_type_description]
-        if expected_type_description in PYTHON_NESTED_TYPE_CHECK_LIST:
-            nested_type = param_details[param]["items"]["type"]
-            nested_type_converted = PYTHON_TYPE_MAPPING[nested_type]
+        if language == "Java":
+            expected_type_converted = JAVA_TYPE_CONVERSION[expected_type_description]
+
+            if expected_type_description in JAVA_TYPE_CONVERSION:
+                if type(value) != str:
+                    result["valid"] = False
+                    result["error"].append(
+                        f"Incorrect type for parameter {repr(param)}. Expected type String, got {type(value).__name__}. Parameter value: {repr(value)}."
+                    )
+                    result["error_type"] = "type_error:java"
+                    return result
+
+                if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
+                    nested_type = param_details[param]["items"]["type"]
+                    nested_type_converted = JAVA_TYPE_CONVERSION[nested_type]
+                    value = java_type_converter(
+                        value, expected_type_description, nested_type
+                    )
+                else:
+                    value = java_type_converter(value, expected_type_description)
+
+        elif language == "JavaScript":
+            expected_type_converted = JS_TYPE_CONVERSION[expected_type_description]
+
+            if expected_type_description in JS_TYPE_CONVERSION:
+                if type(value) != str:
+                    result["valid"] = False
+                    result["error"].append(
+                        f"Incorrect type for parameter {repr(param)}. Expected type String, got {type(value).__name__}. Parameter value: {repr(value)}."
+                    )
+                    result["error_type"] = "type_error:js"
+                    return result
+
+                if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
+                    nested_type = param_details[param]["items"]["type"]
+                    nested_type_converted = JS_TYPE_CONVERSION[nested_type]
+                    value = js_type_converter(
+                        value, expected_type_description, nested_type
+                    )
+                else:
+                    value = js_type_converter(value, expected_type_description)
+
+        elif language == "Python":
+            expected_type_converted = PYTHON_TYPE_MAPPING[expected_type_description]
+            if expected_type_description in PYTHON_NESTED_TYPE_CHECK_LIST:
+                nested_type = param_details[param]["items"]["type"]
+                nested_type_converted = PYTHON_TYPE_MAPPING[nested_type]
 
         # We convert all tuple value to list when the expected type is tuple.
         # The conversion is necessary because any tuple in the possible answer would become a list after being processed through json.dump() and json.load().
