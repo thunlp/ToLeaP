@@ -1,6 +1,51 @@
 import json
 import sys
 import os
+from utils.bfcl import process_multiple_func_string
+
+def sft_multi_turn(input_file, output_file, ground_truth_file):
+    with open(input_file, 'r') as f:
+        data = [json.loads(line) for line in f]
+    
+    with open(ground_truth_file, 'r') as f:
+        ground_truth_lines = f.readlines()
+        ground_truth_data = {json.loads(line)["id"]: json.loads(line) for line in ground_truth_lines}
+    
+    result = []
+    for entry in data:
+        conversations = []
+        system_prompt = "You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you will need to make one or more function/tool calls to achieve the purpose. \n If none of the function can be used, point it out. If the given question lacks the parameters required by the function, also point it out.\n You should only return the function calls in your response.\n If you decide to invoke any of the function(s), you MUST put it in the format of [func_name1(params_name1=params_value1, params_name2=params_value2...), func_name2(params)] \n You SHOULD NOT include any other text in the response. \n At each turn, your should try your best to complete the tasks requested by the user within the current turn. Continue to output functions to call until you have fulfilled the user's request to the best of your ability. Once you have no more functions to call, the system will consider the current turn complete and proceed to the next turn or task."
+        tool_description = json.dumps(entry.get("function", []))
+        
+        questions = entry.get("question", [])
+        ground_truth = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
+
+        for q, gt in zip(questions, ground_truth):
+            # Add human message
+            conversations.append({
+                "from": "human",
+                "value": q
+            })
+
+            functions = [process_multiple_func_string(func) for func in gt]
+            
+            # Add function call
+            conversations.extend([
+                {
+                    "from": "gpt",
+                    "value": json.dumps(functions)
+                }
+            ])
+
+        converted_entry = {
+            "conversations": conversations,
+            "system": system_prompt,
+            "tools": tool_description
+        }
+        result.append(converted_entry)
+    
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=2)
 
 def sft_simple(input_file, output_file, ground_truth_file):
     with open(input_file, 'r') as f:
@@ -290,5 +335,9 @@ if __name__ == "__main__":
         sft_parallel(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
         sft_irrelevance(f'bfcl/BFCL_v3_live_irrelevance.json', f'sft_data/sft_bfcllive_irrelvance.json')
         sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfcl_irrelevance.json')
+        sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_base.json', f'sft_data/sft_bfcl_multi_turn_base.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
+        sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_long_context.json', f'sft_data/sft_bfcl_multi_turn_long_context.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_long_context.json')
+        sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_miss_func.json', f'sft_data/sft_bfcl_multi_turn_miss_func.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_miss_func.json')
+        sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_miss_param.json', f'sft_data/sft_bfcl_multi_turn_miss_param.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_miss_param.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')
