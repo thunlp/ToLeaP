@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     # Divide stats by total number of instances
     for key in error_stats:
-        error_stats[key] = f"{error_stats[key] * 100:.1f}%"
+        error_stats[key] = f"{error_stats[key]:.1f}%"
 
     output_file.flush()
     output_file.close()
