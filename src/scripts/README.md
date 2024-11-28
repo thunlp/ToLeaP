@@ -35,7 +35,18 @@ python src/scripts/Toollens_eval.py --topk List[Int] --ground_truth_u_i List --p
 ```
 
 
- **BFCL Evaluation**   
+ **BFCL Evaluation**        
+1. Multi-Turn
+Use the official [bfcl command](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard) to evaluate multi-turn BFCL models.
+```
+pip install -e .[oss_eval_vllm] # Install bfcl prerequistes
+bash bfcl_eval_multi_turn.sh $MODEL $NUM_GPUS $GPU_MEMORY_UTILIZATION
+```
+`$MODEL` Path of the model file.       
+`$NUM_GPUS` Number of GPUs to use. (Optional, default is 1)       
+`$GPU_MEMORY_UTILIZATION` GPU memory utilization. (Optional, default is 0.8)         
+
+BFCL multi-turn evaluation measures the accuracy of the final state of the environment after executing all the actions performed during the conversation. If the final state matches the ground truth, the evaluation is considered successful.
  ```
  path ：/BodhiAgent/src/scripts
  在配好VLLM host 后，可以直接 python bfcl_eval.py (不同数据及记得换一下data就行)
