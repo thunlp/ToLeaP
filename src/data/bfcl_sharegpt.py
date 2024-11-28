@@ -280,15 +280,17 @@ def sft_exec():  #wait for examing how to do exec
 if __name__ == "__main__":
     input_prefix = sys.argv[1]
     if input_prefix == 'ast':
-        sft_simple(f'bfcl/BFCL_v3_simple.json', f'sft_data/sft_bfcl_simple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
-        sft_parallel(f'bfcl/BFCL_v3_parallel.json', f'sft_data/sft_bfcl_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_multiple.json', f'sft_data/sft_bfcl_multiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
-        sft_parallel(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/sft_bfcl_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
-        sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'sft_data/sft_bfcllive_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
-        sft_parallel(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
-        sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/sft_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
-        sft_parallel(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
-        sft_irrelevance(f'bfcl/BFCL_v3_live_irrelevance.json', f'sft_data/sft_bfcllive_irrelvance.json')
-        sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfcl_irrelevance.json')
+        # sft_simple(f'bfcl/BFCL_v3_simple.json', f'sft_data/sft_bfcl_simple.json', f'bfcl/possible_answer/BFCL_v3_simple.json')
+        # sft_parallel(f'bfcl/BFCL_v3_parallel.json', f'sft_data/sft_bfcl_parallel.json', f'bfcl/possible_answer/BFCL_v3_parallel.json')
+        # sft_simple(f'bfcl/BFCL_v3_multiple.json', f'sft_data/sft_bfcl_multiple.json', f'bfcl/possible_answer/BFCL_v3_multiple.json')
+        # sft_parallel(f'bfcl/BFCL_v3_parallel_multiple.json', f'sft_data/sft_bfcl_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_parallel_multiple.json')
+        # sft_simple(f'bfcl/BFCL_v3_live_simple.json', f'sft_data/sft_bfcllive_simple.json', f'bfcl/possible_answer/BFCL_v3_live_simple.json')
+        # sft_parallel(f'bfcl/BFCL_v3_live_parallel.json', f'sft_data/sft_bfcllive_parallel.json', f'bfcl/possible_answer/BFCL_v3_live_parallel.json')
+        # sft_simple(f'bfcl/BFCL_v3_live_multiple.json', f'sft_data/sft_bfcllive_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_multiple.json')
+        # sft_parallel(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
+        # sft_irrelevance(f'bfcl/BFCL_v3_live_irrelevance.json', f'sft_data/sft_bfcllive_irrelvance.json')
+        # sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfcl_irrelevance.json')
+        sft_simple(f'bfcl/BFCL_v3_java.json', f'sft_data/sft_bfcl_java.json', f'bfcl/possible_answer/BFCL_v3_java.json')
+        sft_simple(f'bfcl/BFCL_v3_javascript.json', f'sft_data/sft_bfcl_javascript.json', f'bfcl/possible_answer/BFCL_v3_javascript.json')
     else:
         sft_simple(f'bfcl/BFCL_v3_{input_prefix}.json', f'stf_{input_prefix}.json', f'bfcl/possible_answer/BFCL_v3_{input_prefix}.json')
