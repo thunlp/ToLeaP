@@ -95,6 +95,7 @@ def process_Ins_json_file(input_file):
     results = []
     for key, query_data in data.items():
         try:
+            print(query_data)
             result = convert_to_sharegpt(query_data)
             results.append(result)
         except Exception as e:

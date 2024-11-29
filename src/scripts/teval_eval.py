@@ -39,12 +39,10 @@ class FunctionCallEvaluator:
     
     def evaluate_single(self, example):
         try:
-            # 解析 ground truth
             label = json.loads(example["label"])
             gt_name = label["name"]
             gt_args = label["arguments"]
 
-            # 提取 predict 信息
             predict = example["predict"]
             pred_action, pred_args = self.extract_action_info(predict)
 
@@ -56,10 +54,8 @@ class FunctionCallEvaluator:
                     "error": "Invalid format or missing fields"
                 }
 
-            # 格式分数
             format_score = 1
 
-            # 参数匹配分数
             args_score = self.compute_args_em_metric(gt_name, pred_action, gt_args, pred_args)
 
             total_score = (format_score + args_score) / 2
@@ -92,8 +88,6 @@ class FunctionCallEvaluator:
             total_args_score += result["args_score"]
             total_score += result["total_score"]
 
-            # if result["error"]:
-            #     print(f"Error in example: {example}\nError: {result['error']}")
 
         n = len(examples)
         return {

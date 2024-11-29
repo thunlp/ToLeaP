@@ -335,6 +335,8 @@ if __name__ == "__main__":
         sft_parallel(f'bfcl/BFCL_v3_live_parallel_multiple.json', f'sft_data/sft_bfcllive_parallel_multiple.json', f'bfcl/possible_answer/BFCL_v3_live_parallel_multiple.json')
         sft_irrelevance(f'bfcl/BFCL_v3_live_irrelevance.json', f'sft_data/sft_bfcllive_irrelvance.json')
         sft_irrelevance(f'bfcl/BFCL_v3_irrelevance.json', f'sft_data/sft_bfcl_irrelevance.json')
+        sft_simple(f'bfcl/BFCL_v3_java.json', f'sft_data/sft_bfcl_java.json', f'bfcl/possible_answer/BFCL_v3_java.json')
+        sft_simple(f'bfcl/BFCL_v3_javascript.json', f'sft_data/sft_bfcl_javascript.json', f'bfcl/possible_answer/BFCL_v3_javascript.json')
         sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_base.json', f'sft_data/sft_bfcl_multi_turn_base.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_base.json')
         sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_long_context.json', f'sft_data/sft_bfcl_multi_turn_long_context.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_long_context.json')
         sft_multi_turn(f'bfcl/BFCL_v3_multi_turn_miss_func.json', f'sft_data/sft_bfcl_multi_turn_miss_func.json', f'bfcl/possible_answer/BFCL_v3_multi_turn_miss_func.json')
