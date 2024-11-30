@@ -15,7 +15,7 @@ ALL_ARGS = [ModelArguments, DataArguments, Seq2SeqTrainingArguments, FinetuningA
 parser = ArgumentParser()
 parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
 parser.add_argument('--input_file', type=str, required=True, help='Path to input file')
-parser.add_argument('--model_name', type=str, default='meta-llama/Meta-Llama-3.1-8B-Instruct')
+parser.add_argument('--model_name', type=str, default='meta-llama/Llama-3.1-8B-Instruct')
 
 # Rest of the original functions remain unchanged
 def extract_tool_name(action, tool_str):
@@ -101,7 +101,6 @@ if __name__ == "__main__":
     avg_node_f1 = 0
     avg_edge_f1 = 0
     
-    # Tool name metrics: Node, Edge
     for parsed, label in zip(all_parsed, labels):
         label = json.loads(label)
         # Node F1
@@ -110,12 +109,8 @@ if __name__ == "__main__":
         f1_score = f1(parsed_names, label_names)
         avg_node_f1 += f1_score
         # Edge F1
-        if len(label) > 1 and len(parsed) > 1:
-            label_edges = [f"{label[i]['name']} - {label[i+1]['name']}" for i in range(len(label) - 1)]
-            parsed_edges = [f"{parsed[i][0]} - {parsed[i+1][0]}" for i in range(len(parsed) - 1)]
-        else:
-            label_edges = label_names
-            parsed_edges = parsed_names
+        label_edges = [f"{label[i]['name']} - {label[i+1]['name']}" for i in range(len(label) - 1)]
+        parsed_edges = [f"{parsed[i][0]} - {parsed[i+1][0]}" for i in range(len(parsed) - 1)]
         f1_score = f1(parsed_edges, label_edges)
         avg_edge_f1 += f1_score
 
