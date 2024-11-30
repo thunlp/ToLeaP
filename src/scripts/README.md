@@ -35,11 +35,38 @@ python src/scripts/Toollens_eval.py --topk List[Int] --ground_truth_u_i List --p
 ```
 
 
- **BFCL Evaluation**   
- ```
- path ：/BodhiAgent/src/scripts
- 在配好VLLM host 后，可以直接 python bfcl_eval.py (不同数据及记得换一下data就行)
- ```
+ **BFCL Evaluation**        
+1. Multi-Turn
+Use the official [bfcl command](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard) to evaluate multi-turn BFCL models.
+```
+pip install -e .[oss_eval_vllm] # Install bfcl prerequistes
+bash bfcl_eval_multi_turn.sh $MODEL $NUM_GPUS $GPU_MEMORY_UTILIZATION
+```
+`$MODEL` Path of the model file.       
+`$NUM_GPUS` Number of GPUs to use. (Optional, default is 1)       
+`$GPU_MEMORY_UTILIZATION` GPU memory utilization. (Optional, default is 0.8)         
+
+BFCL multi-turn evaluation measures the accuracy of the final state of the environment after executing all the actions performed during the conversation. If the final state matches the ground truth, the evaluation is considered successful.
+
+In the path `/BodhiAgent/src/scripts`, use the following code to configure the vllm environment:
+```
+conda create -n llm_call python=3.10 -y
+conda activate llm_call
+
+export VLLM_VERSION=0.6.1.post1
+export PYTHON_VERSION=310
+pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl --extra-index-url https://download.pytorch.org/whl/cu118
+```
+Then, use `python -m vllm.entrypoints.openai.api_server --model YOUR_MODEL_NAME_OR_PATH --dtype bfloat16 --gpu-memory-utilization 0.9 --host 0.0.0.0 --port 8000 --max-model-len 96352` to run vllm.
+
+Besides, you need to pip install the following packages:
+```
+pip install tree_sitter==0.21.3
+pip install tree-sitter-java==0.21.0
+pip install tree-sitter-javascript==0.21.4
+```
+Then, run `python bfcl_eval.py` to evaluate.
+
 
  **Teval Evaluation**  
  ```
