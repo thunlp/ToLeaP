@@ -2,29 +2,48 @@ import json
 import re
 import os
 
+
 class FunctionCallEvaluator:
     def __init__(self):
         self.action_pattern = r'Action:\s*([^\n]*)'
         self.action_input_pattern = r'Action Input:\s*({[^}]*})'
-        
+        self.json_pattern = r'(?s).*?(\{.*\})' 
+
     def extract_action_info(self, text):
         try:
-            if text.strip().startswith("{"):
-                data = json.loads(text)
-                action = data.get("Action") or data.get("action") or data.get("Name") or data.get("name")
-                action_input = data.get("Action_Input") or data.get("args") or data.get("Args")
-                return action, action_input
-            
-         
-            action_match = re.search(self.action_pattern, text)
+            # 首先尝试从文本中提取JSON部分
+            json_match = re.search(self.json_pattern, text)
+            if json_match:
+                json_str = json_match.group(1)
+                try:
+                    data = json.loads(json_str)
+                    # 依次检查可能的action键名
+                    action = (data.get("Action") or 
+                             data.get("action") or 
+                             data.get("Name") or 
+                             data.get("name"))
+                    # 依次检查可能的input键名
+                    action_input = (data.get("Action Input") or 
+                                  data.get("Action_Input") or 
+                                  data.get("args") or 
+                                  data.get("Args"))
+                    return action, action_input
+                except json.JSONDecodeError:
+                    pass  # JSON解析失败，继续尝试其他方式
+
+            # 如果JSON提取失败，使用正则表达式匹配
+            action_match = re.search(self.action_pattern, text, re.IGNORECASE)
             action = action_match.group(1).strip() if action_match else None
-
-            input_match = re.search(self.action_input_pattern, text)
+            
+            input_match = re.search(self.action_input_pattern, text, re.IGNORECASE)
             action_input = json.loads(input_match.group(1)) if input_match else None
-
+            
             return action, action_input
+            
         except Exception as e:
+            print(f"Error extracting action info: {e}")
             return None, None
+
     
     def compute_args_em_metric(self, gt_action, pred_action, gt_args, pred_args):
         cnt = 0.
@@ -44,6 +63,9 @@ class FunctionCallEvaluator:
             gt_args = label["arguments"]
 
             predict = example["predict"]
+            print(predict)
+            # print('-------------------')
+            # print(gt_args)
             pred_action, pred_args = self.extract_action_info(predict)
 
             if pred_action is None or pred_args is None:
@@ -104,7 +126,7 @@ if __name__ == "__main__":
     import os
 
     base_path = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_path, 'gp_sft_teval_ins.jsonl')
+    file_path = os.path.join(base_path, 'generated_predictions.jsonl')
 
     evaluator = FunctionCallEvaluator()
 
@@ -117,7 +139,7 @@ if __name__ == "__main__":
 
         dataset_results = evaluator.evaluate_dataset(dataset)
 
-        output_path = os.path.join(base_path, 'teval_evaluation_results.json')
+        output_path = os.path.join(base_path, 'teval_7B_evaluation_results.json')
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(dataset_results, f, ensure_ascii=False, indent=2)
 
