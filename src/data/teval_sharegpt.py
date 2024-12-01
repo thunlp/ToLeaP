@@ -42,6 +42,7 @@ def format_api_spec(api_spec_str):
 
 def convert_to_sharegpt(query_data):
     try:
+        format_type = query_data['meta_data']['response_format']
         system_content = query_data['origin_prompt'][0]['content']
         api_spec = system_content.split("You have access to the following API:\n")[1].split("\nPlease")[0]
         
@@ -61,16 +62,6 @@ def convert_to_sharegpt(query_data):
             "name": ground_truth['action'],
             "arguments": ground_truth['args']
         }
-        conversations.append({
-            "from": "function_call", 
-            "value": json.dumps(function_call)
-        })
-        
-        # Add empty observation
-        conversations.append({
-            "from": "observation",
-            "value": ""
-        })
         
         # Add GPT response (same as function call)
         conversations.append({
@@ -94,13 +85,14 @@ def process_Ins_json_file(input_file):
     
     results = []
     for key, query_data in data.items():
-        try:
-            print(query_data)
-            result = convert_to_sharegpt(query_data)
-            results.append(result)
-        except Exception as e:
-            print(f"Error processing key {key}: {str(e)}")
-            continue
+        format_type = query_data['meta_data']['response_format']
+        if format_type == 'json':
+            try:
+                result = convert_to_sharegpt(query_data)
+                results.append(result)
+            except Exception as e:
+                print(f"Error processing key {key}: {str(e)}")
+                continue
     
     with open('sft_data/teval_sharegpt_format.json', 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
@@ -109,4 +101,4 @@ def process_Ins_json_file(input_file):
 
 
 if __name__ == "__main__":
-    process_Ins_json_file('teval/instruct_v2.json')
+    process_Ins_json_file('data_instruct_v2.json')
