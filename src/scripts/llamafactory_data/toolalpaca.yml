@@ -1,0 +1,23 @@
+### model
+model_name_or_path: meta-llama/Meta-Llama-3.1-8B-Instruct
+
+### method
+stage: sft
+do_predict: true
+finetuning_type: full
+
+### dataset
+eval_dataset: toolalpaca
+template: llama3
+cutoff_len: 2048
+max_samples: 1000
+overwrite_cache: true
+preprocessing_num_workers: 1
+
+### output
+output_dir: toolalpaca_eval_results
+overwrite_output_dir: true
+
+### eval
+per_device_eval_batch_size: 1
+predict_with_generate: true

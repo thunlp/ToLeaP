@@ -1,0 +1,23 @@
+### model
+model_name_or_path: meta-llama/Meta-Llama-3.1-8B-Instruct # Will be updated by command line argument
+
+### method
+stage: sft
+do_predict: true
+finetuning_type: full
+
+### dataset
+eval_dataset: taskbench
+template: llama3
+cutoff_len: 4096
+max_samples: 30000 # Modify this to change the number of samples to evaluate
+overwrite_cache: true
+preprocessing_num_workers: 1
+
+### output
+output_dir: taskbench_eval_results
+overwrite_output_dir: true
+
+### eval
+per_device_eval_batch_size: 1
+predict_with_generate: true
