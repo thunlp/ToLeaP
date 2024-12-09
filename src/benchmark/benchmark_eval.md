@@ -43,7 +43,7 @@ bfcl generate --model gpt-3.5-turbo-0125 --test-category parallel,multiple,simpl
 bfcl evaluate --model gpt-3.5-turbo-0125
 ```
 
-## T-Eval 环境准备
+## T-Eval 环境准备 (数据集比较难下就单独下好放到了当前目录的data里面)
 
 1. 创建并激活 Conda 环境
 ```bash
