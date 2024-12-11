@@ -85,15 +85,28 @@ For example, you have obtained the sharegpt format toolalpaca datasets following
 ToolAlpaca measures process and response correctness using GPT-4. Template for evaluation can be found in `utils/template.py`. The final outcome is the percentage of "yes" outputs for both process and response correctness.
 
 **TaskBench Evaluation**  
+IMPORTANT: VLLM server is managed using the `start_server` function in `LLM` class. Do not start a server manually. This server is terminated when the script is finished. Requests are handled concurrently for efficiency.
+```
+python taskbench_eval.py --model MODEL --data_path DATA_PATH --is_api IS_API --host HOST --port PORT --tensor_parallel_size TENSOR_PARALLEL_SIZE --batch_size BATCH_SIZE
+```
+*Parameters*
 
-Follow instructions in [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main) to first install the repo, then run the evaluation with `bash taskbench_eval.sh $INPUT $CONFIG $MODEL`. The explaination of the configs are as the follows:
-- `$INPUT` Path of the sharegpt toolalpaca file.
-- `$CONFIG` Path of the yaml config file for LLaMA-Factory.
-- `$MODEL` Model name or path.
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `--model` | `meta-llama/Llama-2-7b-chat-hf` | Path to the model or model identifier to be used for inference. Can be local path, huggingface model id, or api model. |
+| `--data_path` | `../data/sft_data/taskbench_data_dailylifeapis.json` | Path to the sharegpt JSON file containing the test cases or conversation data to be processed. |
+| `--is_api` | `False` | Set this to true if calling api model like gpt, false if using vllm. |
+| `--host` | `localhost` | Hostname |
+| `--port` | `13427` | Port number |
+| `--tensor_parallel_size` | `1` | Number of GPUs to use for tensor parallelism. Increase this value when using multiple GPUs to improve performance on larger models. |
+| `--batch_size` | `20` | Number of concurrent requests. |
+NOTE: Taskbench has three data splits: dailylifeapis, multimedia and huggingface. Find and ensure correct path of corresponding files in `data/sft_data/` folder.  
 
-For example, you have obtained the sharegpt format taskbench dataset following the instruction in the `data` folder. Under the conda enviroment `llamafactory` and set `export OPENAI_API_KEY="your-api-key-here"`, run `bash taskbench_eval.sh ../data/sft_data/taskbench_data.json llamafactory_data/taskbench.yml  meta-llama/Meta-Llama-3.1-8B-Instruct` to get the evaluation results.
+TaskBench measures task step correctness, action correctness and action input correctness separately.  
+*Task Step Evaluation*:
+- **ROUGE**: Measures the similarity between the predicted task steps and the ground truth.
+- **BERTScore**: Similar to ROUGE, but uses BERT embeddings to measure similarity.
 
-TaskBench measures action and action input separately.  
 *Action Evaluation*:
 - **Node F1**: Measures f1 of the predicted sequence of actions against the ground truth. (Order insensitive)  
 - **Edge F1**: Concatenate consecutive actions and compare against the ground truth. (Order sensitive)
