@@ -27,3 +27,10 @@ ds = load_dataset("interstellarninja/tool-calls-sampled-prompts")
 ds = load_dataset("interstellarninja/tool-calls-multiturn")
 ds = load_dataset("interstellarninja/tool-calls-singleturn")
 
+# instruction finetuning data
+# ds = load_dataset("microsoft/orca-agentinstruct-1M-v1")
+# ds = load_dataset("O1-OPEN/OpenO1-SFT")
+# ds = load_dataset("amphora/QwQ-LongCoT-130K")
+# ds = load_dataset("HuggingFaceTB/smoltalk")
+
+
