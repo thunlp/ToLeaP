@@ -13,7 +13,8 @@ try:
 except ImportError:
     Logger().warning("transformers is not installed in the current env.")
 
-
+# benchmark --> inference.py --> eval.py
+# benchmark --> message.json --> llm.py --> predict.json --> eval.py
 class Message:
     def __init__(
         self,

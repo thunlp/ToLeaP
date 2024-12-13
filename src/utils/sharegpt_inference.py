@@ -8,19 +8,8 @@ import requests
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-#todo adding python -m vllm.entrypoints.openai.api_server --model /hy-tmp/3.1-8B --dtype bfloat16   --gpu-memory-utilization 0.9 --host 0.0.0.0 --port 8000
-#inside the class
 
-# model handler map
-# offline infernce 
-
-#when using, you need manually open the serve like this 
-#vllm serve /home/test/test03/models/Qwen2.5-7B-Instruct \
-    # --port 8000 \
-    # --dtype bfloat16 \
-    # --gpu-memory-utilization 0.8 \
-    # --tensor-parallel-size 2 \
-
+# TODO: load config, use .env file
 class LLM:
     def __init__(
         self,
@@ -104,7 +93,7 @@ class LLM:
                 server_process.terminate()
                 server_process.wait()
 
-    def _create_messages(self, conversation_data: Dict) -> List[Dict]:
+    def _create_messages_from_sharegpt(self, conversation_data: Dict) -> List[Dict]:
         """Create messages list from conversation data"""
         messages = []
         
@@ -134,6 +123,52 @@ class LLM:
                 })
         
         return messages
+    
+    def _create_messages_from_user(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False):
+        if shrink_multiple_break:
+            while "\n\n\n" in user_prompt:
+                user_prompt = user_prompt.replace("\n\n\n", "\n\n")
+            while "\n\n\n" in system_prompt:
+                system_prompt = system_prompt.replace("\n\n\n", "\n\n")
+        system_prompt = self.cfg.default_system_prompt if system_prompt is None else system_prompt
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            }
+        ]
+        messages.extend(former_messages[-1 * self.cfg.max_past_message_include :])
+        messages.append(
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
+        )
+        return messages
+
+    def _single_inference(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False, functions=None):
+        # TODO: vllm single inference
+        if self.cfg.use_llama:
+            inputs = self.tokenizer(user_prompt, return_tensors="pt")
+            outputs = self.model.generate(**inputs, max_length=1024)
+            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        else:
+            messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+            if functions:
+                completion = self.client.chat.completions.create(model=self.api_model,
+                                                                messages=messages,
+                                                                functions=functions,
+                                                                function_call="auto")
+                response = completion.choices[0].message.content
+                if response is None:
+                    response = [completion.choices[0].message.function_call.name,
+                                completion.choices[0].message.function_call.arguments]
+                return response
+            else:
+                completion = self.client.chat.completions.create(model=self.api_model,
+                                                                messages=messages)
+                response = completion.choices[0].message.content
+        return response
 
     def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
         """Run inference for a batch of messages with concurrent processing, preserving order."""
@@ -149,6 +184,8 @@ class LLM:
             )
             return index, chat_output.choices[0].message.content
 
+        # TODO: OpenAI multiple workers
+        # TODO: huggingface batch inference
         with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
             futures = {executor.submit(process_single_message, idx, messages): idx 
                     for idx, messages in enumerate(messages_batch)}
@@ -165,5 +202,5 @@ class LLM:
 
     def __call__(self, test_cases: List[Dict], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
         """Process test cases"""
-        all_messages = [self._create_messages(case) for case in test_cases]
+        all_messages = [self._create_messages_from_sharegpt(case) for case in test_cases]
         return self._batch_inference(all_messages, max_concurrent_calls, temperature)
