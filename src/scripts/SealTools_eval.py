@@ -22,6 +22,16 @@ def extract_nested_content(s):
 
 def jsonlizer(predict):
     pretool = {}
+    if "Action:" in predict:
+        try:
+            s = predict[predict.find("Action:")-8 :]
+            result = "{" + extract_nested_content(s) + "}"
+            pretool = json.loads(json.dumps(eval(result)))
+        except: return ""
+    return pretool
+
+def jsonlizertoollama(predict):
+    pretool = {}
     if "\"api\":" in predict:
         try:
             s = predict[predict.find("\"api\":")-20 :]
@@ -93,7 +103,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/scripts/test_out_domain.jsonl")
+    parser.add_argument("--test_file", type=str, default="src/scripts/dev.jsonl")
     args = parser.parse_args()
 
     #Test_file follows generated_prediction format

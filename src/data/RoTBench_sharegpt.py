@@ -6,7 +6,7 @@ def transferSharegpt(file_path):
     f = open(file_path, 'r', encoding='utf-8')
     data = json.load(f)
     for conversationIndex in data:
-        del conversationIndex["id"]
+        # del conversationIndex["id"]
         del conversationIndex["scenario"]
         rawData= copy.deepcopy(conversationIndex["conversations"])
         for i in range(len(rawData)):   
@@ -24,7 +24,7 @@ def transferSharegptthrid(file_path):
     f = open(file_path, 'r', encoding='utf-8')
     data = json.load(f)
     for conversationIndex in data:
-        del conversationIndex["id"]
+        # del conversationIndex["id"]
         del conversationIndex["scenario"]
         rawData=copy.deepcopy(conversationIndex["conversations"])
         for i in range(len(rawData)):   

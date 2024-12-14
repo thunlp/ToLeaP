@@ -55,6 +55,8 @@ def ts_eval(evalData):
     for i in range(len(evalData)):
         try:
             answers = get_answer_list(evalData[i])
+        except: print("No answers")
+        try:
             preAction, preParam = get_Predict_value(evalData[i])
         except: continue
         right_status = 0
@@ -72,6 +74,7 @@ def ts_eval(evalData):
             tool_selection.append(i)
     evalList = []
     evalList.append(len(tool_selection))
+    print(tool_selection)
     print("sucess ts num:",len(tool_selection)," tool num:", len(evalData), "Success Rate:", len(tool_selection)/len(evalData))
     evalList.append(tool_selection)
     checkList.append(evalList)
@@ -93,6 +96,7 @@ def pi_eval(evalData):
                 ansAction = ansAction[:-1]
             if preAction == "finish":
                 preAction = ansAction
+           
             if right_status < 1:
                 right_status = 1
             if not preParam.keys() == answers[ansAction].keys():
@@ -155,12 +159,13 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/scripts/gp_new_First_Turnunion.jsonl")
+    parser.add_argument("--predict_file", type=str, default="src/scripts/new_Third_Turnmedium.jsonl")
+    # parser.add_argument("--origin_file", type=str, default="src/scripts/new_Third_Turnclean.jsonl")
     args = parser.parse_args()
 
     #Test_file follows generated_prediction format
     checkList = []
-    f = open(args.test_file, encoding="utf-8")
+    f = open(args.predict_file, encoding="utf-8")
     evalData = [json.loads(line) for line in f]
     max_len = len(evalData)
     general_eval(evalData)

@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/scripts/gp_sharegpt_format_lv1-response-train.jsonl")
+    parser.add_argument("--test_file", type=str, default="src/scripts/gp_sharegpt_format_lv3-train.jsonl")
     args = parser.parse_args()
 
     #Test_file follows generated_prediction format
