@@ -4,11 +4,8 @@ import json
 import os
 import requests
 from typing import List, Dict
-from evaluate import load
-import numpy as np
-from scipy.optimize import linear_sum_assignment
-import Levenshtein
-from sklearn.metrics import precision_recall_fscore_support as prfs
+from sklearn.metrics import f1_score
+from rouge_score import rouge_scorer
 
 class TaskbenchLLM(LLM):
     def __init__(self, *args, **kwargs):
@@ -52,9 +49,9 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
     labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
 
     if not is_api:
-        llm = LLM(model=model, port=port, host=host, api_key="taskbench", tensor_parallel_size=tensor_parallel_size)
+        llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True)
     else:
-        llm = LLM(model=model, api_base=f"http://toollearning.cn/v1", api_key=os.environ["OPENAI_API_KEY"])
+        llm = LLM(model=model)
 
     # Run inference
     output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
@@ -64,7 +61,16 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
         if os.path.exists(output_path):
             results = json.load(open(output_path, "r"))
         else:
-            results = llm(eval_data, max_concurrent_calls=batch_size)
+            results = llm.batch_generate(eval_data, max_concurrent_calls=batch_size)
+            results = []
+            for ed in eval_data:
+                results.append(llm.single_generate(
+                    ed["conversations"][-1]["value"], 
+                    system_prompt=ed["system"],
+                    former_messages=ed["conversations"][:-1],
+                    shrink_multiple_break=True
+                ))
+            json.dump(eval_data, open(output_path, "w"), indent=4)
             json.dump(results, open(output_path, "w"), indent=4)
         parsed_results = parse_json(llm, results, data_split)
         json.dump(parsed_results, open(parsed_output_path, "w"), indent=4)
@@ -138,317 +144,244 @@ def parse_json(llm: LLM, responses: List[str], data_split: str) -> List[Dict]:
     # Reformat parsed results to list
     return [parsed_results[i] for i in sorted(parsed_results.keys())]
 
+def get_content_type(content):
+    content = content.strip('\'')
+    assert isinstance(content, str), content
+    # image
+    for ext in ["jpg", "png", "jpeg", "gif", "bmp", "tiff", "svg", "ico"]:
+        if "."+ext in content:
+            return "image"
+    # audio
+    for ext in ["mp3", "wav", "wma", "ogg", "aac", "flac", "aiff", "au"]:
+        if "."+ext in content:
+            return "audio"
+    # video
+    for ext in ["mp4", "avi", "mov", "flv", "wmv", "mkv", "webm", "m4v", "mpg", "mpeg"]:
+        if "."+ext in content:
+            return "video"
+    return "text"
+
 def evaluate(predictions, labels, data_split, tool_desc):
-    # Helpers
-    def get_content_type(content):
-        content = content.strip('\'')
-        assert isinstance(content, str), content
-        # image
-        for ext in ["jpg", "png", "jpeg", "gif", "bmp", "tiff", "svg", "ico"]:
-            if "."+ext in content:
-                return "image"
-        # audio
-        for ext in ["mp3", "wav", "wma", "ogg", "aac", "flac", "aiff", "au"]:
-            if "."+ext in content:
-                return "audio"
-        # video
-        for ext in ["mp4", "avi", "mov", "flv", "wmv", "mkv", "webm", "m4v", "mpg", "mpeg"]:
-            if "."+ext in content:
-                return "video"
-        return "text"
-    
-    def flatten(gt, pred, types = None):
-        assert len(gt) == len(pred)
-
-        gt_flat = []
-        pred_flat = []
-
-        for (sample_gt, sample_pred) in zip(gt, pred):
-            union = set()
-
-            union.update(sample_gt)
-            union.update(sample_pred)
-
-            for s in union:
-                if types: 
-                    if s in types:
-                        if s in sample_gt:
-                            gt_flat.append(types.index(s)+1)
-                        else:
-                            gt_flat.append(0)
-
-                        if s in sample_pred:
-                            pred_flat.append(types.index(s)+1)
-                        else:
-                            pred_flat.append(0)
-                    else:
-                        gt_flat.append(0)
-                        pred_flat.append(0)
+    for label in labels:
+        for k in label:
+            label[k] = json.loads(label[k])
+    for i in range(len(predictions)):
+        if predictions[i] == "":
+            predictions[i] = {"task_steps": [], "task_nodes": [], "task_links": []}
+    # calculate task steps
+    pred_tasksteps = []
+    label_tasksteps = []
+    for pred, label in zip(predictions, labels):
+        # Convert all steps to string
+        current_pred_steps = pred.get('task_steps', [])
+        for i in range(len(current_pred_steps)):
+            if isinstance(current_pred_steps[i], list):
+                if all(isinstance(step, str) for step in current_pred_steps[i]):
+                    current_pred_steps[i] = "\n".join(current_pred_steps[i])
                 else:
-                    if s in sample_gt:
-                        gt_flat.append(1)
-                    else:
-                        gt_flat.append(0)
+                    current_pred_steps[i] = str(current_pred_steps[i])
+            elif isinstance(current_pred_steps[i], dict):
+                keys = ['description', 'step_description', 'step_name', 'step']
+                current_pred_steps[i] = next((current_pred_steps[i][k] for k in keys if k in current_pred_steps[i]), 
+                                            str(current_pred_steps[i]))
+            elif isinstance(current_pred_steps[i], int):
+                current_pred_steps[i] = str(current_pred_steps[i])
+        pred_tasksteps.append("\n".join(current_pred_steps))
+        label_tasksteps.append("\n".join(label['task_steps']))
 
-                    if s in sample_pred:
-                        pred_flat.append(1)
-                    else:
-                        pred_flat.append(0)
-        return gt_flat, pred_flat
-    # Hardcode Initialize
-    metric = ["f1", "ed", "link", "argument", "rouge"]
-    metric_dict = {}
-    tool_map = {tool["id"]: i+1 for i, tool in enumerate(tool_desc["nodes"])}
-    tool_map_reverse = {i+1: tool["id"] for i, tool in enumerate(tool_desc["nodes"])}
-    tool_map_reverse[0] = "NEGATIVE"
-    tool_map["<PAD>"] = -1
-    if data_split != "dailylifeapis":
-        tool_output_type_map = {tool["id"]: tool["output-type"][0] if len(tool["output-type"]) else "none" for tool in tool_desc["nodes"]}
+    # calculate task nodes
+    pred_node_names = []
+    label_node_names = []
+    pred_tasklinks = []
+    label_tasklinks = []
+    for pred, label in zip(predictions, labels):
+        # names
+        pred_possible_keys = ['task', 'name', 'task_name', 'task_node_name', 'node_name', 'task_node', 'tool']
+        current_pred_nodes = pred.get('task_nodes', [])
+        all_pred_names = []
+        for node in current_pred_nodes:
+            if isinstance(node, dict):
+                node_name = next((node[k] for k in pred_possible_keys if k in node), None)
+                if node_name:
+                    all_pred_names.append(node_name)
+        pred_node_names.append(all_pred_names)
+        # names
+        all_label_names = []
+        for node in label['task_nodes']:
+            if 'task' in node and isinstance(node, dict):
+                all_label_names.append(node['task'])
+        label_node_names.append(all_label_names)
+        # links
+        if data_split != "dailylifeapis":
+            pred_tasklinks.append([])
+            label_tasklinks.append([])
+            for i in range(len(all_pred_names) - 1):
+                pred_tasklinks[-1].append(all_pred_names[i] + " - " + all_pred_names[i+1])
+            for i in range(len(all_label_names) - 1):
+                label_tasklinks[-1].append(all_label_names[i] + " - " + all_label_names[i+1])
 
-    labels = {i: labels[i] for i in range(len(labels))}
-    predictions = {i: predictions[i] for i in range(len(predictions))}
-
-    prediction_task_steps = []
-    label_task_steps = []
-    prediction_names = []
-    label_names = []
-    label_graphs = []
-    prediction_graphs = []
-    label_links = []
-    prediction_links = []
-    label_task_arg_names = []
-    prediction_task_arg_names = []
-    label_task_arg_name_values = []
-    prediction_task_arg_name_values = []
-
-    for id in range(len(labels)):
-        label = labels[id]
-        label["task_steps"] = json.loads(label["task_steps"])
-        label["task_nodes"] = json.loads(label["task_nodes"])
-        label["task_links"] = json.loads(label["task_links"])
-        
-        prediction = predictions[id]
-        if prediction == "":
-            prediction = {
-                "task_steps": [],
-                "task_nodes": [],
-                "task_links": []
-            }
-        else:
-            prediction["task_steps"] = prediction.get("task_steps", [])
-            prediction["task_nodes"] = prediction.get("task_nodes", [])
-            prediction["task_links"] = prediction.get("task_links", [])
-
-        if "rouge" in metric or "bertscore" in metric:
-            prediction_task_step = prediction["task_steps"]
-            label_task_step = label["task_steps"]
-            
+    # calculate task args
+    pred_taskargnames = []
+    label_taskargnames = []
+    pred_taskargvalues = []
+    label_taskargvalues = []
+    for pred, label in zip(predictions, labels):
+        # Label
+        label_argnames = []
+        label_argvalues = []
+        for node in label['task_nodes']:
+            task_name = node.get('task', '') if isinstance(node, dict) else 'PARSE ERROR'
             try:
-                if isinstance(prediction_task_step[0], str):
-                    prediction_task_steps.append("\n".join(prediction_task_step))
-                else:
-                    if "task" in prediction_task_step[0]:
-                        prediction_task_steps.append("\n".join([step["task"] for step in prediction_task_step]))
-                    elif "step" in prediction_task_step[0]:
-                        prediction_task_steps.append("\n".join([step["step"] for step in prediction_task_step]))
-                    elif "id" in prediction_task_step[0]:
-                        prediction_task_steps.append("\n".join([step["id"] for step in prediction_task_step]))
-                    elif "step_name" in prediction_task_step[0]:
-                        prediction_task_steps.append("\n".join([step["step_name"] for step in prediction_task_step]))
-                    else:
-                        prediction_task_steps.append("\n".join([step["description"] for step in prediction_task_step]))
+                arguments = node.get('arguments', [])
             except Exception as e:
-                prediction_task_steps.append(str(prediction_task_step))
+                arguments = []
+            for arg in arguments:
+                name = ""
+                value = ""
+                if isinstance(arg, str):
+                    name = f"{task_name} - {get_content_type(arg)}"
+                    value = f"{task_name} - {name}: {arg}"
+                elif isinstance(arg, int) or isinstance(arg, float):
+                    name = f"{task_name} - number"
+                    value = f"{task_name} - {name}: {arg}"
+                elif isinstance(arg, list):
+                    name = f"{task_name} - list"
+                    value = f"{task_name} - {name}: {arg}"
+                else:
+                    name = f"{task_name} - {arg.get('name', 'LABEL ERROR')}"
+                    value = f"{task_name} - {name}: {arg.get('value', 'LABEL ERROR')}"
+                label_argnames.append(name)
+                label_argvalues.append(value)
+        label_taskargnames.append(label_argnames)
+        label_taskargvalues.append(label_argvalues)
 
-            label_task_steps.append("\n".join(label_task_step))
+        # Pred
+        pred_argnames = []
+        pred_argvalues = []
+        current_pred_nodes = pred.get('task_nodes', [])
+        for node in current_pred_nodes:
+            if not isinstance(node, dict):
+                continue
+            pred_possible_keys = ['task', 'name', 'task_name', 'task_node_name', 'node_name', 'task_node', 'tool']
+            task_name = next((node[k] for k in pred_possible_keys if k in node), '')
+            arguments = node.get('arguments', [])
+            if arguments is None:
+                arguments = []
+            for arg in arguments:
+                name = ""
+                value = []
+                if isinstance(arg, str):
+                    name = f"{task_name} - {get_content_type(arg)}"
+                    value = f"{task_name} - {name}: {arg}"
+                elif isinstance(arg, dict):
+                    name = f"{task_name} - {arg.get('name', 'PRED ERROR')}"
+                    value = f"{task_name} - {name}: {arg.get('value', 'PRED ERROR')}"
+                elif isinstance(arg, list):
+                    for item in arg:
+                        name = f"{task_name} - {get_content_type(str(item))}"
+                        value.append(f"{task_name} - {name}: {str(item)}")
+                    value = "\n".join(value)
+                else:
+                    name = f"{task_name} - PRED ERROR"
+                    value = f"{task_name} - PRED ERROR"
+                pred_argnames.append(name)
+                pred_argvalues.append(value)
+        pred_taskargnames.append(pred_argnames)
+        pred_taskargvalues.append(pred_argvalues)
 
-        label_nodes = label["task_nodes"]
-        prediction_nodes = prediction["task_nodes"] 
+    # calculate task links
+    for pred, label in zip(predictions, labels):
+        if data_split == "dailylifeapis":
+            obj_pred_tasklinks = pred.get('task_links', [])
+            try:
+                obj_pred_tasklinks = [obj_pred_tasklinks[i]['source'] + " - " + obj_pred_tasklinks[i+1]['target'] for i in range(len(obj_pred_tasklinks) - 1)]
+            except Exception as e:
+                obj_pred_tasklinks = []
+            pred_tasklinks.append(obj_pred_tasklinks)
+            obj_label_tasklinks = label.get('task_links', [])
+            try:
+                obj_label_tasklinks = [obj_label_tasklinks[i]['source'] + " - " + obj_label_tasklinks[i+1]['target'] for i in range(len(obj_label_tasklinks) - 1)]
+            except Exception as e:
+                obj_label_tasklinks = []
+            label_tasklinks.append(obj_label_tasklinks)
 
-        try:
-            label_node_name = [node["task"] for node in label_nodes]
-            prediction_node_name = [node["task"] for node in prediction_nodes]
-        except Exception as e:
-            continue
+    # Calculate metrics
 
-        label_task_arg_name = []
-        prediction_task_arg_name = []
+    # Rouge for task steps
+    rouge = rouge_scorer.RougeScorer(['rouge1', 'rouge2'], use_stemmer=True)
+    rouge_scores = [0, 0]
+    for pred, label in zip(pred_tasksteps, label_tasksteps):
+        rouge_scores[0] += rouge.score(pred, label)['rouge1'].fmeasure
+        rouge_scores[1] += rouge.score(pred, label)['rouge2'].fmeasure
+    rouge_scores[0] /= len(pred_tasksteps)
+    rouge_scores[1] /= len(pred_tasksteps)
+    print(rouge_scores)
 
-        label_task_arg_name_value = []
-        prediction_task_arg_name_value = []
-            
-        try:
-            if data_split != "dailylifeapis":
-                prediction_node_name = [name.replace("_", " ") for name in prediction_node_name]
-                label_node_name = [name.replace("_", " ") for name in label_node_name]
-                label_link = []
-                prediction_link = []
-                for inx, node in enumerate(label_nodes):
-                    new_arguments = []
-                    for i, argument in enumerate(node["arguments"]):
-                        try:
-                            if isinstance(argument, dict):
-                                argument = list(argument.values())[0]
-                            if isinstance(argument, list):
-                                argument = " ".join(argument)
-                            if "<node-" in argument:
-                                index_start = argument.index("<node-") + 6
-                                index_end = argument.index(">")
-                                if int(argument[index_start: index_end]) == inx:
-                                    continue
-                                argument_tool_name = label_node_name[int(argument[index_start: index_end])]
-                                label_link.append({"source": argument_tool_name, "target": node["task"]})
-                                new_argument = {"name": tool_output_type_map.get(argument_tool_name, "other"), "value": argument_tool_name}
-                            else:
-                                new_argument = {"name": get_content_type(argument), "value": argument}
-                        except Exception as e:
-                            pass
-                        new_arguments.append(new_argument)
-                    node["arguments"] = new_arguments
-                    
-                for inx, node in enumerate(prediction_nodes):
-                    new_arguments = []
-                    for i, argument in enumerate(node.get("arguments", [])):
-                        try:
-                            if isinstance(argument, dict):
-                                argument = list(argument.values())[0]
-                            if isinstance(argument, list):
-                                argument = " ".join(argument)
-                            if isinstance(argument, str) and "<node-" in argument:
-                                index_start = argument.index("<node-") + 6
-                                index_end = argument.index(">")
-                            
-                                if int(argument[index_start: index_end]) == inx:
-                                    continue
-                                prediction_tool_name = prediction_node_name[int(argument[index_start: index_end])]
-                                prediction_link.append({"source": prediction_tool_name, "target": node["task"]})
-                                new_argument = {"name": tool_output_type_map.get(prediction_tool_name, "other"), "value": prediction_tool_name}
-                            else:
-                                new_argument = {"name": get_content_type(argument), "value": argument}
+    # F1 for task nodes
+    name_f1 = 0
+    for pred_name, label_name in zip(pred_node_names, label_node_names):
+        ground_truth = set(label_name)
+        prediction = set(pred_name)
+        true_positive = ground_truth & prediction
+        precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
+        recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
+        if precision == 0 or recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+        name_f1 += f1
+    name_f1 /= len(pred_node_names)
+    print(name_f1)
 
-                        except Exception as e:
-                            pass
-                        new_arguments.append(new_argument)
-                    node["arguments"] = new_arguments
-            else:
-                try:
-                    prediction_link = prediction["task_links"]
-                    label_link = label["task_links"]
-                except Exception as e:
-                    prediction_link = []
-                    label_link = label["task_links"]
-        except Exception as e:
-            continue
+    # F1 for task args
+    t_f1 = 0
+    v_f1 = 0
+    for pred_argname, label_argname in zip(pred_taskargnames, label_taskargnames):
+        ground_truth = set(label_argname)
+        prediction = set(pred_argname)
+        true_positive = ground_truth & prediction
+        precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
+        recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
+        if precision == 0 or recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+        t_f1 += f1
+    t_f1 /= len(pred_taskargnames)
+    print(t_f1)
 
-        prediction_node_argument = [node.get("arguments", []) for node in prediction_nodes]
-        label_node_argument = [node["arguments"] for node in label_nodes]
+    # F1 for task args
+    for pred_argvalue, label_argvalue in zip(pred_taskargvalues, label_taskargvalues):
         # import pdb; pdb.set_trace()
-        for task, arguments in zip (prediction_node_name, prediction_node_argument):
-            for argument in arguments:
-                try:
-                    label_task_arg_name.append(f"{task}-{argument['name']}")
-                    label_task_arg_name_value.append(f"{task}-{argument['name']}-{argument['value']}")
-                except Exception as e:
-                    label_task_arg_name.append(f"{task}-")
-                    label_task_arg_name_value.append(f"{task}--{argument}")
-        
-        for task, arguments in zip (label_node_name, label_node_argument):
-            for argument in arguments:
-                try:
-                    prediction_task_arg_name.append(f"{task}-{argument['name']}")
-                    prediction_task_arg_name_value.append(f"{task}-{argument['name']}-{argument['value']}")
-                except Exception as e:
-                    name = argument.get("name", "")
-                    value = argument.get("value", "")
-                    prediction_task_arg_name.append(f"{task}-")
-                    prediction_task_arg_name_value.append(f"{task}--{name}-{value}")
+        ground_truth = set(label_argvalue)
+        prediction = set(pred_argvalue)
+        true_positive = ground_truth & prediction
+        precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
+        recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
+        if precision == 0 or recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+        v_f1 += f1
+    v_f1 /= len(pred_taskargvalues)
+    print(v_f1)
 
-        label_graph = {
-            "nodes": label_node_name,
-            "links": label_link,
-            "arguments": label_node_argument
-        }
-        prediction_graph = {
-            "nodes": prediction_node_name,
-            "links": prediction_link,
-            "arguments": prediction_node_argument
-        }
+    # F1 for task links
+    link_f1 = 0
+    for pred_tasklink, label_tasklink in zip(pred_tasklinks, label_tasklinks):
+        ground_truth = set(label_tasklink)
+        prediction = set(pred_tasklink)
+        true_positive = ground_truth & prediction
+        precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
+        recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
+        if precision == 0 or recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+        link_f1 += f1
+    link_f1 /= len(pred_tasklinks)
+    print(link_f1)
 
-        label_graphs.append(label_graph)
-        prediction_graphs.append(prediction_graph)
-
-        for node_name in prediction_node_name:
-            assert isinstance(node_name, str), node_name
-
-        prediction_names.append(prediction_node_name)
-        label_names.append(label_node_name)
-
-        prediction_task_arg_names.append(prediction_task_arg_name)
-        label_task_arg_names.append(label_task_arg_name)
-    
-        prediction_task_arg_name_values.append(prediction_task_arg_name_value)
-        label_task_arg_name_values.append(label_task_arg_name_value)
-
-        label_links.append(label_link)
-        prediction_links.append(prediction_link)
-
-
-    rouge = load("rouge")
-    rouge_scores = rouge.compute(predictions=prediction_task_steps, references=label_task_steps, use_aggregator=True, use_stemmer=True)
-    metric_dict["ROUGE-1"] = rouge_scores["rouge1"]
-    metric_dict["ROUGE-2"] = rouge_scores["rouge2"]
-
-    bertscore = load("bertscore")
-    bertscore_scores = bertscore.compute(predictions=prediction_task_steps, references=label_task_steps, lang="en", model_type="roberta-large")
-    metric_dict["BERTScore"] = np.mean(bertscore_scores["f1"])
-    
-    types = list(range(1, len(tool_desc["nodes"])+1))
-    types_name = [tool_map_reverse[i] for i in types]
-    gt_flat, pred_flat = flatten(label_names, prediction_names, types = types_name)
-
-    micro = prfs(gt_flat, pred_flat, labels=types, average='micro')[:-1]
-    metric_dict["node_f1"] = micro[2]
-
-
-    gt_flat, pred_flat = flatten(label_task_arg_names, prediction_task_arg_names)
-    micro = prfs(gt_flat, pred_flat, average="binary")[:-1]
-    print(f"Argument Task-ArgName Binary F1: [ No Matching ]: {micro[-1]}")
-    metric_dict["name_f1"] = micro[-1]
-
-    gt_flat, pred_flat = flatten(label_task_arg_name_values, prediction_task_arg_name_values)
-    micro = prfs(gt_flat, pred_flat, average="binary")[:-1]
-    print(f"Argument Task-ArgName-Value Binary F1 [ No Matching ]: {micro[-1]}")
-    metric_dict["value_f1"] = micro[-1]
-    
-    tuple_label_links = []
-    tuple_prediction_links = []
-    for label_link, prediction_link in zip(label_links, prediction_links):
-        try:
-            pred_tuples = [(link["source"], link["target"]) for link in prediction_link]
-            label_tuples = [(link["source"], link["target"]) for link in label_link]
-            
-            # Pad shorter list with empty tuples to match lengths
-            max_len = max(len(pred_tuples), len(label_tuples))
-            pred_tuples.extend([("", "")] * (max_len - len(pred_tuples)))
-            label_tuples.extend([("", "")] * (max_len - len(label_tuples)))
-            
-            tuple_prediction_links.append(pred_tuples)
-            tuple_label_links.append(label_tuples)
-        except Exception as e:
-            pass
-    
-    gt_flat, pred_flat = flatten(tuple_label_links, tuple_prediction_links)
-
-
-    micro = prfs(gt_flat, pred_flat, average="binary")[:-1]
-    metric_dict["edge_f1"] = micro[-1]
-
-    # Round F1 metrics to 2 decimal places and multiply by 100
-    for key in list(metric_dict.keys()):
-        if "f1" in key.lower():
-            metric_dict[key] = round(metric_dict[key] * 100, 2)
-
-    print(metric_dict)
 
 if __name__ == "__main__":
     main()

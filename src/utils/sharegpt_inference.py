@@ -7,37 +7,51 @@ import subprocess
 import requests
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dotenv import load_dotenv
+import transformers
+import os
 
+load_dotenv('../.env.template')
 
 # TODO: load config, use .env file
 class LLM:
     def __init__(
         self,
-        api_key: str = "",
-        api_base: str = None,
-        model: str = "/hy-tmp/3.1-8B",
-        gpu_memory_utilization: float = 0.9,
-        host: str = "0.0.0.0",
-        dtype: str = None,
-        port: int = 8000,
-        tensor_parallel_size: int = 1,
+        model: str = "/hy-tmp/3.1-8B", # 这个是vllm的model path，和huggingface保持统一
+        gpu_memory_utilization: float = 0.9, # 0-1，代表用多少gpu。越高占显存越多但batch处理会加速
+        dtype: str = None, # 建议不设，用模型config自己的
+        tensor_parallel_size: int = 1, # 用多少张gpu
+        use_api_model: bool = False, # 是否调用本地api model
+        use_sharegpt_format: bool = False, # 是否使用sharegpt格式
+        max_past_message_include: int = -1, # 历史记录看多少，-1代表全部
     ):
-        """Initialize LLM with API configurations"""
-        self.api_key = api_key
+        # env initialization
+        self.port = os.getenv("PORT")
+        self.host = os.getenv("HOST")
+        self.api_key = os.getenv("API_KEY")
+        self.use_hf = os.getenv("USE_HF")
+
+        # model initialization
         self.model_path_or_name = model
         self.dtype = dtype
         self.gpu_memory_utilization = gpu_memory_utilization
         self.server_process = None
-        self.port = port
-        self.host = host
         self.tensor_parallel_size = tensor_parallel_size
-
-        if api_base is not None:
-            self.api_base = api_base
-        else:   
-            self.api_base = f"http://{host}:{port}/v1"
-
-        self.client = OpenAI(api_key=api_key, base_url=self.api_base)
+        self.max_past_message_include = max_past_message_include
+        self.use_api_model = use_api_model
+        self.use_sharegpt_format = use_sharegpt_format
+        if not self.use_hf:
+            if self.use_api_model:
+                self.client = OpenAI(api_key=self.api_key, base_url=os.getenv("API_BASE"))
+            else:
+                self.client = OpenAI(api_key=self.api_key, base_url=f"http://{self.host}:{self.port}/v1")
+        else:
+            self.pipeline = transformers.pipeline(
+                "text-generation",
+                model=self.model_path_or_name,
+                device_map="auto",
+                trust_remote_code=True,
+            )
 
     @contextmanager
     def start_server(self):
@@ -93,6 +107,7 @@ class LLM:
                 server_process.terminate()
                 server_process.wait()
 
+    # sharegpt format
     def _create_messages_from_sharegpt(self, conversation_data: Dict) -> List[Dict]:
         """Create messages list from conversation data"""
         messages = []
@@ -124,20 +139,24 @@ class LLM:
         
         return messages
     
+    # openai format
     def _create_messages_from_user(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False):
         if shrink_multiple_break:
             while "\n\n\n" in user_prompt:
                 user_prompt = user_prompt.replace("\n\n\n", "\n\n")
             while "\n\n\n" in system_prompt:
                 system_prompt = system_prompt.replace("\n\n\n", "\n\n")
-        system_prompt = self.cfg.default_system_prompt if system_prompt is None else system_prompt
+
         messages = [
             {
                 "role": "system",
                 "content": system_prompt,
             }
         ]
-        messages.extend(former_messages[-1 * self.cfg.max_past_message_include :])
+        if self.max_past_message_include > 0:
+            messages.extend(former_messages[-1 * self.max_past_message_include :])
+        else:
+            messages.extend(former_messages)
         messages.append(
             {
                 "role": "user",
@@ -146,34 +165,22 @@ class LLM:
         )
         return messages
 
-    def _single_inference(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False, functions=None):
-        # TODO: vllm single inference
-        if self.cfg.use_llama:
-            inputs = self.tokenizer(user_prompt, return_tensors="pt")
-            outputs = self.model.generate(**inputs, max_length=1024)
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # single inference
+    def _single_inference(self, messages: List[Dict], temperature: float = 0):
+        if not self.use_hf:
+            chat_output = self.client.chat.completions.create(
+                model=self.model_path_or_name,
+                messages=messages,
+                temperature=temperature,
+            )
+            return chat_output.choices[0].message.content
         else:
-            messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
-            if functions:
-                completion = self.client.chat.completions.create(model=self.api_model,
-                                                                messages=messages,
-                                                                functions=functions,
-                                                                function_call="auto")
-                response = completion.choices[0].message.content
-                if response is None:
-                    response = [completion.choices[0].message.function_call.name,
-                                completion.choices[0].message.function_call.arguments]
-                return response
-            else:
-                completion = self.client.chat.completions.create(model=self.api_model,
-                                                                messages=messages)
-                response = completion.choices[0].message.content
-        return response
+            outputs = self.pipeline(messages, max_length=1024)
+            return outputs[0]["generated_text"][-1]
 
+    # batch inference
     def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
         """Run inference for a batch of messages with concurrent processing, preserving order."""
-        time_start = time.time()
-        
         responses = [None] * len(messages_batch)  # Pre-allocate a list to preserve order
 
         def process_single_message(index, messages):
@@ -183,12 +190,18 @@ class LLM:
                 temperature=temperature,
             )
             return index, chat_output.choices[0].message.content
+        
+        def process_single_message_hf(index, messages):
+            outputs = self.pipeline(messages, max_length=1024)
+            return index, outputs[0]["generated_text"][-1]
 
-        # TODO: OpenAI multiple workers
-        # TODO: huggingface batch inference
         with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
-            futures = {executor.submit(process_single_message, idx, messages): idx 
-                    for idx, messages in enumerate(messages_batch)}
+            if not self.use_hf:
+                futures = {executor.submit(process_single_message, idx, messages): idx 
+                        for idx, messages in enumerate(messages_batch)}
+            else:
+                futures = {executor.submit(process_single_message_hf, idx, messages): idx 
+                        for idx, messages in enumerate(messages_batch)}
 
             for future in tqdm(as_completed(futures), total=len(messages_batch), desc="Processing concurrent calls"):
                 try:
@@ -200,7 +213,14 @@ class LLM:
         
         return responses
 
-    def __call__(self, test_cases: List[Dict], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
+    def batch_generate(self, test_cases: List[Dict], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
         """Process test cases"""
-        all_messages = [self._create_messages_from_sharegpt(case) for case in test_cases]
+        if self.use_sharegpt_format:
+            all_messages = [self._create_messages_from_sharegpt(case) for case in test_cases]
+        else:
+            all_messages = test_cases
         return self._batch_inference(all_messages, max_concurrent_calls, temperature)
+    
+    def single_generate(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False, temperature: float = 0):
+        messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+        return self._single_inference(messages, temperature)
