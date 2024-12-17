@@ -1,11 +1,17 @@
-from utils.sharegpt_inference import LLM
+import sys
+import os
 import click
 import json
-import os
 import requests
 from typing import List, Dict
 from sklearn.metrics import f1_score
 from rouge_score import rouge_scorer
+
+current_dir = os.path.dirname(os.path.abspath(__file__)) 
+utils_dir = os.path.join(current_dir, '..')
+sys.path.append(utils_dir)
+
+from utils.sharegpt_inference import LLM
 
 class TaskbenchLLM(LLM):
     def __init__(self, *args, **kwargs):
