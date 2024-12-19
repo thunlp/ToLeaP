@@ -13,8 +13,12 @@ load_dotenv()
 class Config:
     api_key = os.getenv("API_KEY")
     api_model = os.getenv("API_MODEL")
-    database_url = os.getenv("DATABASE_URL")
+    api_base = os.getenv("DATABASE_URL")
     data_folder_path = os.getenv("DATA_FOLDER_PATH")
+
+    port = os.getenv("PORT")
+    host = os.getenv("HOST")
+    use_hf = os.getenv("USE_HF")
 
     use_llama = os.getenv("USE_LLAMA") == "True"
     llama_model_path = os.getenv("LLAMA_MODEL_PATH")

@@ -1,62 +1,164 @@
-import tiktoken
-
+import time
+import json
+from typing import List, Dict
+from tqdm import tqdm
+from openai import OpenAI
+import subprocess
+import requests
+from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import transformers
+import os
 from cfg.config import Config
-from utils.log import Logger
 
-try:
-    import openai
-except ImportError:
-    Logger().warning("openai is not installed.")
 
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-except ImportError:
-    Logger().warning("transformers is not installed in the current env.")
+conf = Config()
 
-# benchmark --> inference.py --> eval.py
-# benchmark --> message.json --> llm.py --> predict.json --> eval.py
-class Message:
+
+# TODO: load config, use .env file
+class LLM:
     def __init__(
         self,
-        api_key=None,
-        api_model=None,
-        database_url=None,
-    ) -> None:
-        self.cfg = Config()
-
-        if self.cfg.use_llama:
-            self.model = AutoModelForCausalLM.from_pretrained(self.cfg.llama_model_path)
-            self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.llama_model_path)
-        else:
-            self.api_key = api_key if api_key is not None else self.cfg.api_key
-            self.api_model = api_model if api_model is not None else self.cfg.api_model
-            self.encoder = tiktoken.encoding_for_model(self.api_model)
-            self.database_url = database_url if database_url is not None else self.cfg.database_url
-
-            self.client = openai.OpenAI(api_key=self.api_key, base_url=self.database_url)
-
-    def build_messages(
-        self,
-        user_prompt,
-        system_prompt=None,
-        former_messages=[],
-        shrink_multiple_break=False,
+        model: str = "/hy-tmp/3.1-8B", # 这个是vllm的model path，和huggingface保持统一
+        gpu_memory_utilization: float = 0.9, # 0-1，代表用多少gpu。越高占显存越多但batch处理会加速
+        dtype: str = None, # 建议不设，用模型config自己的
+        tensor_parallel_size: int = 1, # 用多少张gpu
+        use_api_model: bool = False, # 是否调用本地api model
+        use_sharegpt_format: bool = False, # 是否使用sharegpt格式
+        max_past_message_include: int = -1, # 历史记录看多少，-1代表全部
     ):
-        """build the messages to avoid implementing several redundant lines of code"""
-        # shrink multiple break will recursively remove multiple breaks(more than 2)
+        # env initialization
+        self.port = conf.port
+        self.host = conf.host
+        self.api_key = conf.api_key
+        self.use_hf = conf.use_hf
+
+        # model initialization
+        self.model_path_or_name = model
+        self.dtype = dtype
+        self.gpu_memory_utilization = gpu_memory_utilization
+        self.server_process = None
+        self.tensor_parallel_size = tensor_parallel_size
+        self.max_past_message_include = max_past_message_include
+        self.use_api_model = use_api_model
+        self.use_sharegpt_format = use_sharegpt_format
+        if not self.use_hf:
+            if self.use_api_model:
+                self.client = OpenAI(api_key=self.api_key, base_url=conf.api_base)
+            else:
+                self.client = OpenAI(api_key=self.api_key, base_url=f"http://{self.host}:{self.port}/v1")
+        else:
+            self.pipeline = transformers.pipeline(
+                "text-generation",
+                model=self.model_path_or_name,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+
+    @contextmanager
+    def start_server(self):
+        """Context manager for starting and stopping the server"""
+        cmd = ["vllm", "serve", self.model_path_or_name, "--gpu-memory-utilization", str(self.gpu_memory_utilization)]
+        
+        if self.dtype is not None:
+            cmd.extend(["--dtype", self.dtype])
+            
+        if self.api_key is not None and self.api_key != "":
+            cmd.extend(["--api-key", self.api_key])
+            
+        if self.port is not None:
+            cmd.extend(["--port", str(self.port)])
+
+        if self.host is not None:
+            cmd.extend(["--host", self.host])
+            
+        if self.tensor_parallel_size is not None:
+            cmd.extend(["--tensor-parallel-size", str(self.tensor_parallel_size)])
+        
+        # Start the server as a subprocess
+        with open("serve.log", "w") as log_file:
+            server_process = subprocess.Popen(
+                cmd,
+                stdout=log_file,
+                stderr=log_file,
+                text=True
+            )
+        
+            # Wait for server to start up
+            print("Starting server, waiting until ready...")
+            while True:
+                try:
+                    # Try to connect to check if server is up
+                    test_question = "True or False: 1+1=2?"
+                    response = self.client.chat.completions.create(
+                        model=self.model_path_or_name,
+                        messages=[{"role": "user", "content": test_question}],
+                        max_tokens=1,
+                        timeout=10,
+                    )
+                    print("Test question: ", test_question, "Response: ", response.choices[0].message.content)
+                    print("Successfully got response from server, evaluation will start soon...")
+                    break
+                except Exception as e:
+                    print(f"Server not ready ({str(e)}), waiting...")
+                    time.sleep(10)
+
+            try:
+                yield server_process
+            finally:
+                server_process.terminate()
+                server_process.wait()
+
+    # sharegpt format
+    def _create_messages_from_sharegpt(self, conversation_data: Dict) -> List[Dict]:
+        """Create messages list from conversation data"""
+        messages = []
+        
+        # system prompt
+        if "system" in conversation_data:
+            messages.append({
+                "role": "system",
+                "content": conversation_data["system"]
+            })
+
+        if "tools" in conversation_data:
+            messages[0]["content"] += f"\nAvailable tools: {conversation_data['tools']}"
+        
+        # getting the last as label
+        conversations = conversation_data["conversations"][:-1]  
+        
+        for conv in conversations:
+            if conv["from"] == "human":
+                messages.append({
+                    "role": "user",
+                    "content": "USER: " + conv["value"]
+                })
+            elif conv["from"] == "gpt":
+                messages.append({
+                    "role": "assistant",
+                    "content": "ASSISTANT: " + conv["value"]
+                })
+        
+        return messages
+    
+    # openai format
+    def _create_messages_from_user(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False):
         if shrink_multiple_break:
             while "\n\n\n" in user_prompt:
                 user_prompt = user_prompt.replace("\n\n\n", "\n\n")
             while "\n\n\n" in system_prompt:
                 system_prompt = system_prompt.replace("\n\n\n", "\n\n")
-        system_prompt = self.cfg.default_system_prompt if system_prompt is None else system_prompt
+
         messages = [
             {
                 "role": "system",
                 "content": system_prompt,
             }
         ]
-        messages.extend(former_messages[-1 * self.cfg.max_past_message_include :])
+        if self.max_past_message_include > 0:
+            messages.extend(former_messages[-1 * self.max_past_message_include :])
+        else:
+            messages.extend(former_messages)
         messages.append(
             {
                 "role": "user",
@@ -65,35 +167,62 @@ class Message:
         )
         return messages
 
-    def get_response(
-        self,
-        user_prompt,
-        system_prompt=None,
-        former_messages=[],
-        shrink_multiple_break=False,
-        functions=None,
-        **kwargs,
-    ):
-        if self.cfg.use_llama:
-            inputs = self.tokenizer(user_prompt, return_tensors="pt")
-            outputs = self.model.generate(**inputs, max_length=1024)
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # single inference
+    def _single_inference(self, messages: List[Dict], temperature: float = 0):
+        if not self.use_hf:
+            chat_output = self.client.chat.completions.create(
+                model=self.model_path_or_name,
+                messages=messages,
+                temperature=temperature,
+            )
+            return chat_output.choices[0].message.content
         else:
-            messages = self.build_messages(user_prompt, system_prompt, former_messages, shrink_multiple_break)
-            if functions:
-                completion = self.client.chat.completions.create(model=self.api_model,
-                                                                messages=messages,
-                                                                functions=functions,
-                                                                function_call="auto")
-                response = completion.choices[0].message.content
-                if response is None:
-                    response = [completion.choices[0].message.function_call.name,
-                                completion.choices[0].message.function_call.arguments]
-                return response
+            outputs = self.pipeline(messages, max_length=1024)
+            return outputs[0]["generated_text"][-1]
+
+    # batch inference
+    def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
+        """Run inference for a batch of messages with concurrent processing, preserving order."""
+        responses = [None] * len(messages_batch)  # Pre-allocate a list to preserve order
+
+        def process_single_message(index, messages):
+            chat_output = self.client.chat.completions.create(
+                model=self.model_path_or_name,
+                messages=messages,
+                temperature=temperature,
+            )
+            return index, chat_output.choices[0].message.content
+        
+        def process_single_message_hf(index, messages):
+            outputs = self.pipeline(messages, max_length=1024)
+            return index, outputs[0]["generated_text"][-1]
+
+        with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
+            if not self.use_hf:
+                futures = {executor.submit(process_single_message, idx, messages): idx 
+                        for idx, messages in enumerate(messages_batch)}
             else:
-                completion = self.client.chat.completions.create(model=self.api_model,
-                                                                messages=messages)
-                response = completion.choices[0].message.content
-        return response
+                futures = {executor.submit(process_single_message_hf, idx, messages): idx 
+                        for idx, messages in enumerate(messages_batch)}
 
+            for future in tqdm(as_completed(futures), total=len(messages_batch), desc="Processing concurrent calls"):
+                try:
+                    index, result = future.result()
+                    responses[index] = result
+                except Exception as e:
+                    print(f"An error occurred for batch {futures[future]}: {e}")
+                    responses[futures[future]] = None
+        
+        return responses
 
+    def batch_generate(self, test_cases: List[Dict], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
+        """Process test cases"""
+        if self.use_sharegpt_format:
+            all_messages = [self._create_messages_from_sharegpt(case) for case in test_cases]
+        else:
+            all_messages = test_cases
+        return self._batch_inference(all_messages, max_concurrent_calls, temperature)
+    
+    def single_generate(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False, temperature: float = 0):
+        messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+        return self._single_inference(messages, temperature)

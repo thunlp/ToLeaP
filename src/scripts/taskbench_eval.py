@@ -11,7 +11,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 utils_dir = os.path.join(current_dir, '..')
 sys.path.append(utils_dir)
 
-from utils.sharegpt_inference import LLM
+from utils.llm import LLM
 
 class TaskbenchLLM(LLM):
     def __init__(self, *args, **kwargs):
