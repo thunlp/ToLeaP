@@ -12,6 +12,7 @@ for split in splits:
         response = requests.get(url)
         response.raise_for_status()
         tool_descs[split] = response.json()
+        json.dump(tool_descs[split], open(f'sft_data/taskbench_tool_desc_{split}.json', 'w'), indent=2)
     except Exception as e:
         print(f"Error fetching tool description for {split}: {e}")
 

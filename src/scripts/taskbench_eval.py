@@ -50,7 +50,9 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
     # Initialize
     data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
     tool_desc_path = f"https://raw.githubusercontent.com/microsoft/JARVIS/refs/heads/main/taskbench/data_{data_split}/tool_desc.json"
-    tool_desc = requests.get(tool_desc_path).json()
+    # tool_desc = requests.get(tool_desc_path).json()
+    tool_desc_file = os.path.join(os.path.dirname(data_path), f"taskbench_tool_desc_{data_split}.json")
+    tool_desc = json.load(open(tool_desc_file, "r"))
     eval_data = json.load(open(data_path, "r"))
     labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
 
@@ -133,7 +135,7 @@ def parse_json(llm: LLM, responses: List[str], data_split: str) -> List[Dict]:
     
     # Second pass - reformat invalid responses
     if reformat_batch:
-        reformatted = llm._batch_inference([[user_prompt] for user_prompt in reformat_batch])
+        reformatted = llm.batch_generate([[user_prompt] for user_prompt in reformat_batch])
         
         for idx, new_content in zip(reformat_indices, reformatted):
             new_content = new_content.replace("\n", "").replace("\_", "_")
