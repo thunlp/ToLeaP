@@ -1,6 +1,6 @@
 import openai
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from config import Config
+from cfg.config import Config
 
 
 def get_response_from_llama(query):
