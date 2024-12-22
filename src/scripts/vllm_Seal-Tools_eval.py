@@ -376,16 +376,16 @@ def calculate_score_ToolLearning(data_path):
     return result_dict
 
 def raw_to_pred(raw_data_path, label_data_path):
-    raw_dataset = read_jsonl(raw_data_path)
+    raw_dataset = read_json(raw_data_path)
     label_dataset = read_json(label_data_path)
     pred_list = []
     for raw_data,label_data in zip(raw_dataset,label_dataset ):
         pred_output = {
-                                'id':raw_data["id"],
+                                'id':label_data["id"],
                                 'predict':[],
                                 'gold_data':label_data,
                             }
-        output_text = raw_data["text"][0]
+        output_text = raw_data[:]
         pred_text = transform_output_format("ToolLearning", output_text)
         pred_output['predict'].append(pred_text)
         pred_list.append(pred_output)
@@ -393,14 +393,19 @@ def raw_to_pred(raw_data_path, label_data_path):
 
 if __name__ == "__main__":
     pred_folder_path = "src/data/pred_data/Seal-Tools"
-    model_name = "llama2"
+    model_name = "llama3.1"
     os.makedirs('src/data/eval_result/Seal-Tools/' + model_name + '/', exist_ok=True)
     output_dir = "src/data/eval_result/Seal-Tools/" + model_name
-    dataset_name_list = ["dev", "test_in_domain", "test_out_domain",]
+    dataset_name_list = ["dev", 
+                        #  "test_in_domain", 
+                        #  "test_out_domain",
+                         ]
+
     for dataset_name in dataset_name_list:
         
         # raw file to pred file
-        raw_data_path = "src/data/pred_data/Seal-Tools" + "/" + model_name + '/raw_' + dataset_name +'.jsonl'
+        # raw_data_path = "src/data/pred_data/Seal-Tools" + "/" + model_name + '/raw_' + dataset_name +'.jsonl'
+        raw_data_path = "src/data/vllm_pred_data/Seal-Tools" + "/" + model_name + '/' + dataset_name +'.json'
         label_data_path = "src/data/eval_data/Seal-Tools" +  "/" + dataset_name +'.json'
         pred_data = raw_to_pred(raw_data_path, label_data_path)
         pred_data_path = "src/data/pred_data/Seal-Tools" + "/" + model_name + '/predict_' + dataset_name +'.jsonl'

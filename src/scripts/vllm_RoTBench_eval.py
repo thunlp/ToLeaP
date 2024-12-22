@@ -140,8 +140,10 @@ def get_raven_action_input(action_input, test_action, config, version):
 
 def get_test_value(data, config, version):
     if not version:
-        test_value = data["conversations"][-1]["value"]
+        # test_value = data["conversations"][-1]["value"]
+        test_value = data
         test_action = test_value[test_value.find("Action:") + 8: test_value.find("Action Input:")]
+     
         if test_action[-1] == "\n":
             test_action = test_action[:-1]
         try:
@@ -164,7 +166,7 @@ def ts_eval(test, answer, version=0):
     for i in range(len(answer)):
         config = get_config(answer[i])
         answers = get_answer_list(answer[i])
-        test_action, test_action_input = get_test_value(test[i], config, version)
+        test_action, test_action_input = get_test_value(test[i], config, version)       
         if not test_action_input:
             continue
         # Check all possible answers
@@ -309,7 +311,7 @@ def show_stats(check_list, max_len):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/data/pred_data/RoTBench/First_turn/clean.jsonl")
+    parser.add_argument("--test_file", type=str, default="src/data/vllm_pred_data/RoTBench/qwen/clean_v1.json")
     parser.add_argument("--answer_file", type=str, default="src/data/eval_data/RoTBench/First_turn/clean.json")
     parser.add_argument("--version",type=int, default = 0)
 
@@ -322,8 +324,8 @@ if __name__ == '__main__':
     print(cata_list)
     check_list = []
     with open(test_file, encoding="utf-8") as f:
-        # test_data = json.load(f)
-        test_data = [json.loads(line) for line in f]
+        test_data = json.load(f)
+        # test_data = [json.loads(line) for line in f]
     with open(answer_file, encoding="utf-8") as f:
         answer_data = json.load(f)
     max_len = len(answer_data)
