@@ -61,14 +61,8 @@ conda activate teval
 export OPENAI_API_KEY=xxxxxxxxx
 ```
 
-## T-Eval 注意事项
-
-对于原文中没有涉及到的模型，需要自己写对应的meta_template，具体位置在
-```bash
-BodhiAgent/src/benchmark/T-Eval/teval/utils/meta_template.py
-```
-
 ## T-Eval 使用方法
+copy 一份 teval_eval.py teval_setup.sh到Teval folder里面
 
 ### API 模型测试
 ```bash
@@ -79,14 +73,15 @@ sh test_all_en.sh api gpt-3.5-turbo-0125 gpt3.5-turbo
 
 ### Local Host 模型测试
 ```bash
-sh test_all_en.sh hf $HF_PATH $HF_MODEL_NAME $META_TEMPLATE
+bash test_all_en.sh vllm /hy-tmp/3.1_8B llama3.1_8B False
+bash test_all_en.sh vllm $HF_PATH $HF_MODEL_NAME $api_or_not
 ```
 
 ### 结果转换
 ```bash
-python teval/utils/convert_results.py --result_path data/$model_display_name/$model_display_name_-1.json
+python teval/utils/convert_results.py --result_path data/$model_display_name/$model_display_name_-1_.json
 # 示例
-python teval/utils/convert_results.py --result_path data/gpt3.5-turbo/gpt3.5-turbo-1.json
+python teval/utils/convert_results.py --result_path data/gpt3.5-turbo/gpt3.5-turbo-1_.json
 ```
 
 

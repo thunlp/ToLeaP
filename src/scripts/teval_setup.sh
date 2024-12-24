@@ -11,7 +11,7 @@ cd T-Eval
 
 echo "Installing T-Eval dependencies..."
 pip install -r requirements.txt
-
+pip install vllm==0.6.1
 
 echo "Cloning lagent repository..."
 git clone https://github.com/InternLM/lagent.git
@@ -23,9 +23,9 @@ pip install -e .
 
 cd ..
 
-if [ -d "../data" ]; then
+if [ -d "../teval_data" ]; then
     echo "Moving 'data' directory to T-Eval..."
-    mv ../data ./data
+    mv ../teval_data ./data
 else
     echo "'data' directory not found. Skipping move step."
 fi
