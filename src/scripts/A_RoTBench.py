@@ -7,26 +7,39 @@ from typing import List, Dict
 from sklearn.metrics import f1_score
 from rouge_score import rouge_scorer
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.dirname(os.path.abspath(__file__)) 
 utils_dir = os.path.join(current_dir, '..')
 sys.path.append(utils_dir)
 
 from utils.sharegpt_inference import LLM
 
-class SealToolsLLM(LLM):
+class RoTBench(LLM):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _create_messages(self, conversation_data: Dict) -> List[Dict]:
+        """Create messages list from conversation data"""
         print("[DEBUG] - _create_messages checkpoint 1...")
         messages = []
-        conversations = conversation_data["conversations"][:-1]
-        for msg in conversations:
-            if msg["from"] == "human":
-                role = "user"
-            elif msg["from"] == "gpt":
-                role = "assistant"
-            messages.append({"role": role, "content": msg["value"]})
+        conversations = conversation_data["conversations"][:-1]  # the last as label
+        for conv in conversations:
+            if conv["from"] == "system":
+                messages.append({
+                    "role": "system",
+                    "content": conv["value"]
+                })
+            elif conv["from"] == "user":
+                messages.append({
+                    "role": "user",
+                    "content": conv["value"]
+                })
+            elif conv["from"] == "assistant":
+                if isinstance(conv["value"], list):
+                    conv["value"] = "\n".join(conv["value"])
+                messages.append({
+                    "role": "assistant",
+                    "content": conv["value"]
+                })
         return messages
 
     def _messages_to_prompt(self, messages: List[Dict]) -> str:
@@ -34,11 +47,13 @@ class SealToolsLLM(LLM):
         for m in messages:
             role = m["role"]
             content = m["content"]
-            if role == "user":
+            if role == "system":
+                prompt += f"[System]\n{content}\n"
+            elif role == "user":
                 prompt += f"User: {content}\n"
             elif role == "assistant":
                 prompt += f"Assistant: {content}\n"
-        prompt += "Assistant:" 
+        prompt += "Assistant:"
         return prompt
 
     def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[str]:
@@ -51,7 +66,7 @@ class SealToolsLLM(LLM):
         responses = [None] * len(messages_batch)
 
         if not self.use_hf:
-            print("[DEBUG] - Using openai style inference ...")
+            print("[DEBUG] - Using OpenAI API style inference ...")
 
             def process_single_message(index, messages):
                 try:
@@ -62,18 +77,20 @@ class SealToolsLLM(LLM):
                     )
                     return index, chat_output.choices[0].message.content
                 except Exception as e:
+                    print(f"Error: {e}")
                     return index, None
 
             with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
                 futures = {
-                    executor.submit(process_single_message, idx, messages): idx
-                    for idx, messages in enumerate(messages_batch)
+                    executor.submit(process_single_message, idx, msgs): idx
+                    for idx, msgs in enumerate(messages_batch)
                 }
                 for future in tqdm(as_completed(futures), total=len(messages_batch), desc="Processing concurrent calls"):
                     index, result = future.result()
                     responses[index] = result
 
         else:
+            # 如果是使用 HF pipeline，则先把 messages -> prompt_text，然后再调用 pipeline
             print("[DEBUG] - Using HF pipeline inference ...")
 
             def process_single_prompt(index, msgs):
@@ -86,8 +103,8 @@ class SealToolsLLM(LLM):
 
             with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
                 futures = {
-                    executor.submit(process_single_prompt, idx, messages): idx
-                    for idx, messages in enumerate(messages_batch)
+                    executor.submit(process_single_prompt, idx, msgs): idx
+                    for idx, msgs in enumerate(messages_batch)
                 }
                 for future in tqdm(as_completed(futures), total=len(messages_batch), desc="Processing concurrent calls"):
                     index, result = future.result()
@@ -116,7 +133,6 @@ def main(
     max_model_len: int,
     gpu_memory_utilization: float,
     ):
-
     print("[DEBUG] - main checkpoint 1...")
 
     with open(data_path, "r", encoding='utf-8') as f:
@@ -124,7 +140,13 @@ def main(
 
     labels = []
     for d in eval_data:
-        assistant_responses = [c["value"] for c in d["conversations"] if c["from"] == "gpt"]
+        assistant_responses = []
+        for c in d["conversations"]:
+            if c["from"] == "assistant":
+                if isinstance(c["value"], list):
+                    assistant_responses.extend(c["value"])
+                else:
+                    assistant_responses.append(c["value"])
         label_str = "\n".join(assistant_responses)
         labels.append(label_str)
 
@@ -132,7 +154,7 @@ def main(
 
     print("[DEBUG] - main checkpoint 2...")
     if not is_api:
-        llm = SealToolsLLM(
+        llm = RoTBench(
             model=model, 
             tensor_parallel_size=tensor_parallel_size, 
             use_sharegpt_format=True,
@@ -140,12 +162,12 @@ def main(
             gpu_memory_utilization=gpu_memory_utilization,
         )
     else:
-        llm = SealToolsLLM(model=model)
+        llm = RoTBench(model=model)
 
     print("[DEBUG] - main checkpoint 3...")
     # Run inference
     data_filename = os.path.splitext(os.path.basename(data_path))[0]
-    output_path = f"benchmark_results/{model.split('/')[-1]}_sealtools_{data_filename}_results.json"
+    output_path = f"benchmark_results/{model.split('/')[-1]}_rotbench_{data_filename}_results.json"
 
     def run_inference():
         print("[DEBUG] - run_inference checkpoint 1...")
@@ -172,7 +194,7 @@ def main(
         results = json.load(open(output_path, "r"))
 
     print("[DEBUG] - main checkpoint 5...")
-    # 这里可以做后续的评测
+    # 这里可以进行后续的评估逻辑
     print("[DEBUG] - main checkpoint 6...")
 
 if __name__ == "__main__":
