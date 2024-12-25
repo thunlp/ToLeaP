@@ -393,8 +393,10 @@ def raw_to_pred(raw_data_path, label_data_path):
 
 if __name__ == "__main__":
     pred_folder_path = "src/data/pred_data/Seal-Tools"
-    model_name = "llama3.1"
+    model_name = "llama2-7b-chat-hf"
     os.makedirs('src/data/eval_result/Seal-Tools/' + model_name + '/', exist_ok=True)
+    os.makedirs('src/data/pred_data/Seal-Tools/' + model_name + '/', exist_ok=True)
+    output_dir = "src/data/eval_result/Seal-Tools/" + model_name
     output_dir = "src/data/eval_result/Seal-Tools/" + model_name
     dataset_name_list = ["dev", 
                         #  "test_in_domain", 
@@ -408,7 +410,7 @@ if __name__ == "__main__":
         raw_data_path = "src/data/vllm_pred_data/Seal-Tools" + "/" + model_name + '/' + dataset_name +'.json'
         label_data_path = "src/data/eval_data/Seal-Tools" +  "/" + dataset_name +'.json'
         pred_data = raw_to_pred(raw_data_path, label_data_path)
-        pred_data_path = "src/data/pred_data/Seal-Tools" + "/" + model_name + '/predict_' + dataset_name +'.jsonl'
+        pred_data_path = "src/data/pred_data/Seal-Tools" + "/" + model_name + '/pred_' + dataset_name +'.jsonl'
         write_jsonl(pred_data_path, pred_data)
         
         # evaluate pred file 

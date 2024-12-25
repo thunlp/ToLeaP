@@ -141,6 +141,7 @@ def get_raven_action_input(action_input, test_action, config, version):
 def get_test_value(data, config, version):
     if not version:
         # test_value = data["conversations"][-1]["value"]
+
         test_value = data
         test_action = test_value[test_value.find("Action:") + 8: test_value.find("Action Input:")]
      
@@ -166,6 +167,8 @@ def ts_eval(test, answer, version=0):
     for i in range(len(answer)):
         config = get_config(answer[i])
         answers = get_answer_list(answer[i])
+        if test[i] == None:
+            continue
         test_action, test_action_input = get_test_value(test[i], config, version)       
         if not test_action_input:
             continue
@@ -198,6 +201,8 @@ def pi_eval(test, answer, version=0):
     for i in range(len(answer)):
         config = get_config(answer[i])
         answers = get_answer_list(answer[i])
+        if test[i] == None:
+            continue
         test_action, test_action_input = get_test_value(test[i], config, version)
         if not test_action_input:
             continue
@@ -235,6 +240,8 @@ def cf_eval(test, answer, version=0):
     for i in range(len(answer)):
         config = get_config(answer[i])
         answers = get_answer_list(answer[i])
+        if test[i] == None:
+            continue
         test_action, test_action_input = get_test_value(test[i], config, version)
         if not test_action_input:
             continue
@@ -311,8 +318,8 @@ def show_stats(check_list, max_len):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test_file", type=str, default="src/data/vllm_pred_data/RoTBench/qwen/clean_v1.json")
-    parser.add_argument("--answer_file", type=str, default="src/data/eval_data/RoTBench/First_turn/clean.json")
+    parser.add_argument("--test_file", type=str, default="src/data/vllm_pred_data/RoTBench/qwen/union.json")
+    parser.add_argument("--answer_file", type=str, default="src/data/eval_data/RoTBench/First_turn/union.json")
     parser.add_argument("--version",type=int, default = 0)
 
     args = parser.parse_args()
