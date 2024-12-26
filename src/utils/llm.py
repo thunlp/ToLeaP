@@ -186,20 +186,20 @@ class LLM:
 
     # single inference
     def _single_inference(self, messages: List[Dict], temperature: float = 0):
-        if not self.use_hf:
+        if self.hf_pipeline:
+            outputs = self.pipeline(messages)
+            return outputs[0]["generated_text"][-1]
+        elif self.hf_raw:
+            inputs = self.tokenizer(messages, return_tensors="pt").to(self.model.device)
+            outputs = self.model.generate(**inputs, max_length=self.max_output_tokens)
+            return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        else:
             chat_output = self.client.chat.completions.create(
                 model=self.model_path_or_name,
                 messages=messages,
                 temperature=temperature,
             )
             return chat_output.choices[0].message.content
-        elif self.hf_pipeline:
-            outputs = self.pipeline(messages)
-            return outputs[0]["generated_text"][-1]
-        else:
-            inputs = self.tokenizer(messages, return_tensors="pt").to(self.model.device)
-            outputs = self.model.generate(**inputs, max_length=self.max_output_tokens)
-            return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         
     # batch inference
     def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
