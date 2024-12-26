@@ -7,7 +7,7 @@ import subprocess
 import requests
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import transformers
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import os
 from cfg.config import Config
 
@@ -26,12 +26,14 @@ class LLM:
         use_api_model: bool = False, # 是否调用本地api model
         use_sharegpt_format: bool = False, # 是否使用sharegpt格式
         max_past_message_include: int = -1, # 历史记录看多少，-1代表全部
+        max_output_tokens: int = 1024, # 输出最大token数，-1代表不限制
     ):
         # env initialization
         self.port = conf.port
         self.host = conf.host
         self.api_key = conf.api_key
-        self.use_hf = conf.use_hf
+        self.hf_raw = conf.hf_raw
+        self.hf_pipeline = conf.hf_pipeline
 
         # model initialization
         self.model_path_or_name = model
@@ -42,18 +44,31 @@ class LLM:
         self.max_past_message_include = max_past_message_include
         self.use_api_model = use_api_model
         self.use_sharegpt_format = use_sharegpt_format
-        if not self.use_hf:
-            if self.use_api_model:
-                self.client = OpenAI(api_key=self.api_key, base_url=conf.api_base)
-            else:
-                self.client = OpenAI(api_key=self.api_key, base_url=f"http://{self.host}:{self.port}/v1")
-        else:
-            self.pipeline = transformers.pipeline(
+        self.max_output_tokens = max_output_tokens
+
+        # load model
+        if self.hf_raw:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_path_or_name,
+                device_map="auto",
+                trust_remote_code=True
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_path_or_name,
+                trust_remote_code=True
+            )
+        elif self.hf_pipeline:
+            self.pipeline = pipeline(
                 "text-generation",
                 model=self.model_path_or_name,
                 device_map="auto",
                 trust_remote_code=True,
             )
+        else:
+            if self.use_api_model:
+                self.client = OpenAI(api_key=self.api_key, base_url=conf.api_base)
+            else:
+                self.client = OpenAI(api_key=self.api_key, base_url=f"http://{self.host}:{self.port}/v1")
 
     @contextmanager
     def start_server(self):
@@ -176,10 +191,14 @@ class LLM:
                 temperature=temperature,
             )
             return chat_output.choices[0].message.content
-        else:
-            outputs = self.pipeline(messages, max_length=1024)
+        elif self.hf_pipeline:
+            outputs = self.pipeline(messages)
             return outputs[0]["generated_text"][-1]
-
+        else:
+            inputs = self.tokenizer(messages, return_tensors="pt").to(self.model.device)
+            outputs = self.model.generate(**inputs, max_length=self.max_output_tokens)
+            return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
     # batch inference
     def _batch_inference(self, messages_batch: List[List[Dict]], max_concurrent_calls: int = 2, temperature: float = 0) -> List[Dict]:
         """Run inference for a batch of messages with concurrent processing, preserving order."""
@@ -194,16 +213,18 @@ class LLM:
             return index, chat_output.choices[0].message.content
         
         def process_single_message_hf(index, messages):
-            outputs = self.pipeline(messages, max_length=1024)
+            outputs = self.pipeline(messages, max_length=self.max_output_tokens)
             return index, outputs[0]["generated_text"][-1]
 
         with ThreadPoolExecutor(max_workers=max_concurrent_calls) as executor:
             if not self.use_hf:
                 futures = {executor.submit(process_single_message, idx, messages): idx 
                         for idx, messages in enumerate(messages_batch)}
-            else:
+            elif self.hf_pipeline:
                 futures = {executor.submit(process_single_message_hf, idx, messages): idx 
                         for idx, messages in enumerate(messages_batch)}
+            else:
+                raise ValueError("batch_generate only support openai format messages, please use single_generate for hf_raw inference.")
 
             for future in tqdm(as_completed(futures), total=len(messages_batch), desc="Processing concurrent calls"):
                 try:
@@ -221,8 +242,12 @@ class LLM:
             all_messages = [self._create_messages_from_sharegpt(case) for case in test_cases]
         else:
             all_messages = test_cases
+
         return self._batch_inference(all_messages, max_concurrent_calls, temperature)
     
     def single_generate(self, user_prompt, system_prompt=None, former_messages=[], shrink_multiple_break=False, temperature: float = 0):
-        messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+        if not self.hf_raw:
+            messages = self._create_messages_from_user(user_prompt, system_prompt, former_messages, shrink_multiple_break)
+        else:
+            messages = user_prompt
         return self._single_inference(messages, temperature)
