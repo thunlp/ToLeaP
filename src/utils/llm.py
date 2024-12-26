@@ -164,12 +164,14 @@ class LLM:
             while "\n\n\n" in system_prompt:
                 system_prompt = system_prompt.replace("\n\n\n", "\n\n")
 
-        messages = [
-            {
+        messages = []
+
+        if system_prompt is not None:
+            messages.append({
                 "role": "system",
                 "content": system_prompt,
-            }
-        ]
+            })
+
         if self.max_past_message_include > 0:
             messages.extend(former_messages[-1 * self.max_past_message_include :])
         else:
