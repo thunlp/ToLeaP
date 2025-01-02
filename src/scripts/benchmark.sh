@@ -18,14 +18,14 @@ if [ -z "$MODEL_PATH" ]; then
 fi
 
 # RoTBench
-python A1One_RoTBench.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/clean.json
-python A1One_RoTBench.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/union.json
-python A1One_RoTBench.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/medium.json
-python A1One_RoTBench.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/heavy.json
-python A1One_RoTBench.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/slight.json
+python rotbench_eval.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/clean.json
+python rotbench_eval.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/union.json
+python rotbench_eval.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/medium.json
+python rotbench_eval.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/heavy.json
+python rotbench_eval.py --model "$MODEL_PATH" --raw_data_path /bjzhyai03/workhome/songzijun/BodhiAgent-main/src/data/eval_data/RoTBench/First_turn/slight.json
 
 # SealTools
-python A1One_SealTools.py --model "$MODEL_PATH" 
+python sealtools_eval.py --model "$MODEL_PATH" 
 
 # TaskBench
 python taskbench_eval.py --model "$MODEL_PATH" --data_path /bjzhyai03/workhome/songzijun/oldversion/src/data/sft_data/TaskBench/taskbench_data_dailylifeapis.json
