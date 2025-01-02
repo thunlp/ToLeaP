@@ -359,21 +359,33 @@ def calculate_score_ToolLearning(data_path):
                             for parameter_name in predict_api["parameters"]:
                                 if parameter_name in gold_answer[gold_idx]["parameters"] and str(predict_api["parameters"][parameter_name])==str(gold_answer[gold_idx]["parameters"][parameter_name]):
                                     correct_param_num += 1
-
     if correct_format_num > 0:
-        result_dict["AMOUNT"] = 1.0*correct_format_num/len(raw_dataset)
+        result_dict["AMOUNT"] = round(100.0 * correct_format_num / len(raw_dataset), 2)
 
     if correct_api_num * predict_api_num * gold_api_num > 0:
-        result_dict["P_api"] = 1.0*correct_api_num/predict_api_num
-        result_dict["R_api"] = 1.0*correct_api_num/gold_api_num
-        result_dict["F1_api"] = 2*result_dict["P_api"]*result_dict["R_api"]/(result_dict["P_api"]+result_dict["R_api"])
-    
+        result_dict["P_api"] = round(100.0 * correct_api_num / predict_api_num, 2)
+        result_dict["R_api"] = round(100.0 * correct_api_num / gold_api_num, 2)
+        if (result_dict["P_api"] + result_dict["R_api"]) > 0:
+            result_dict["F1_api"] = round(
+                2 * result_dict["P_api"] * result_dict["R_api"] / (result_dict["P_api"] + result_dict["R_api"]),
+                2
+            )
+        else:
+            result_dict["F1_api"] = 0.00  # 避免除以零的情况
+
     if correct_param_num * predict_param_num * gold_param_num > 0:
-        result_dict["P_param"] = 1.0*correct_param_num/predict_param_num
-        result_dict["R_param"] = 1.0*correct_param_num/gold_param_num
-        result_dict["F1_param"] = 2*result_dict["P_param"]*result_dict["R_param"]/(result_dict["P_param"]+result_dict["R_param"])
+        result_dict["P_param"] = round(100.0 * correct_param_num / predict_param_num, 2)
+        result_dict["R_param"] = round(100.0 * correct_param_num / gold_param_num, 2)
+        if (result_dict["P_param"] + result_dict["R_param"]) > 0:
+            result_dict["F1_param"] = round(
+                2 * result_dict["P_param"] * result_dict["R_param"] / (result_dict["P_param"] + result_dict["R_param"]),
+                2
+            )
+        else:
+            result_dict["F1_param"] = 0.00  # 避免除以零的情况
 
     return result_dict
+
 
 def raw_to_pred(raw_data_path, label_data_path):
     raw_dataset = read_json(raw_data_path)
@@ -381,11 +393,12 @@ def raw_to_pred(raw_data_path, label_data_path):
     pred_list = []
     for raw_data,label_data in zip(raw_dataset,label_dataset ):
         pred_output = {
-                                'id':label_data["id"],
-                                'predict':[],
-                                'gold_data':label_data,
-                            }
-        output_text = raw_data[:]
+                        'id':label_data["id"],
+                        'predict':[],
+                        'gold_data':label_data,
+                    }
+        input_len = len(label_data["conversations"][0]["value"])
+        output_text = raw_data[input_len:]
         pred_text = transform_output_format("ToolLearning", output_text)
         pred_output['predict'].append(pred_text)
         pred_list.append(pred_output)
