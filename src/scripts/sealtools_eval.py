@@ -31,7 +31,7 @@ class SealToolsLLM(LLM):
         for cov in conversation_data: # Dict
             for prompt in cov.get("conversations", []): # List
                 if prompt.get("from") == "human":
-                    message = [{"role": "user", "content": prompt["value"]}]
+                    message.append({"role": "user", "content": prompt["value"]})
             messages.append(message)
         return messages
 
@@ -43,6 +43,11 @@ def parse_model_name(model_path: str) -> str:
         "a2cb7a712bb6e5e736ca7f8cd98167f81a0b5bd8": "Llama-2-13b-chat-hf",
         "f5db02db724555f92da89c216ac04704f23d4590": "Llama-2-7b-chat-hf",
         "f66993d6c40a644a7d7885d4c029943861e06113": "ToolLLaMA-2-7b-v2",
+        "checkpoint-10000": "afm10000",
+        "checkpoint-20000": "afm20000",
+        "checkpoint-30000": "afm30000",
+        "checkpoint-40000": "afm40000",
+        "checkpoint-50000": "afm50000",
     }
     model_split = os.path.basename(model_path)
     return model_mapping.get(model_split, model_split)
@@ -87,7 +92,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
     return eval_data
 
 @click.command()
-@click.option("--model", type=str, default="/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--meta-llama--Llama-2-7b-chat-hf/snapshots/f5db02db724555f92da89c216ac04704f23d4590")
+@click.option("--model", type=str, default="/bjzhyai03/workhome/niuboye/sft_model/merged_lora/checkpoint-20000")
 @click.option("--dataset_name_list", type=list[str], default= ["dev", "test_in_domain", "test_out_domain"])
 @click.option("--input_path", type=str, default= "../../src/data/input_data/Seal-Tools")
 @click.option("--raw_data_path", type=str, default= "../../src/data/raw_pred_data/Seal-Tools")
@@ -95,11 +100,11 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 @click.option("--eval_result_path", type=str, default= '../../src/data/eval_result/Seal-Tools')
 @click.option("--is_api", type=bool, default=False)
 @click.option("--host", type=str, default="0.0.0.0")
-@click.option("--port", type=int, default=13430)
+@click.option("--port", type=int, default=13488)
 @click.option("--tensor_parallel_size", type=int, default=2)
 @click.option("--batch_size", type=int, default=8)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
-@click.option("--max_model_len", type=int, default=4096)
+@click.option("--max_model_len", type=int, default=8192)
 def main(
     model: str, 
     dataset_name_list: list[str], 
@@ -115,22 +120,29 @@ def main(
     max_model_len: int,
     gpu_memory_utilization: float,
     ):
+    print("[DEBUG] - Normally running...")
 
-    ### Setup
     model_name = parse_model_name(model)
     create_directories(eval_data_path, eval_result_path, model_name)
+
+    ### Init LLM
+    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization)
 
     for dataset in dataset_name_list:
         input_data_path = os.path.join(input_path, f"{dataset}.json") 
         eval_data = load_eval_data(input_data_path)
 
-        ### Init LLM
-        llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization)
-
         ### Run inference
         if not os.path.exists(raw_data_path):
             os.makedirs(raw_data_path)
-        output_path =  os.path.join(raw_data_path, f"{dataset}_{model_name}.json")  
+        
+        if conf.hf_raw:
+            output_path = os.path.join(raw_data_path, f"hf_{dataset}_{model_name}.json")  
+        else:
+            if is_api:
+                output_path =  os.path.join(raw_data_path, f"api_{dataset}_{model_name}.json") 
+            else: 
+                output_path = os.path.join(raw_data_path, f"vllm_{dataset}_{model_name}.json")  
         print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
         def run_inference() -> List:
@@ -144,10 +156,8 @@ def main(
                         user_prompt = ed["conversations"][0]["value"] 
                         full_reply = llm.single_generate(user_prompt)
                         truncated_reply = full_reply[len(user_prompt):]  
-                        print(truncated_reply)
-                        print("*"*20)
                         results.append(truncated_reply)
-                else:
+                else: # vllm batch generate
                     messages = llm._create_messages(eval_data) # List[List[Dict]]
                     if not is_api:
                         with llm.start_server():
@@ -168,7 +178,6 @@ def main(
         result = calculate_score_ToolLearning(eval_data_filename) # ZK:  测评函数
         result_data_filename = os.path.join(eval_result_path, model_name, dataset + ".json")
         write_json(result_data_filename, result, indent=4)
-        print("[DEBUG] - main checkpoint 6...")
 
 if __name__ == "__main__":
     main()
