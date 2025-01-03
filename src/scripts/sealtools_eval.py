@@ -27,8 +27,9 @@ class SealToolsLLM(LLM):
         super().__init__(*args, **kwargs)
 
     def _create_messages(self, conversation_data: List[Dict]) -> List[List[Dict]]:
-        messages, message = [], []
+        messages = []
         for cov in conversation_data: # Dict
+            message = []
             for prompt in cov.get("conversations", []): # List
                 if prompt.get("from") == "human":
                     message.append({"role": "user", "content": prompt["value"]})
@@ -36,6 +37,7 @@ class SealToolsLLM(LLM):
         return messages
 
 conf = Config()
+print(conf.use_chat)
 
 def parse_model_name(model_path: str) -> str:
     model_mapping = {
@@ -65,7 +67,7 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                   max_model_len: int, gpu_memory_utilization: float) -> LLM:
     if not is_api:
         if not conf.use_chat:
-            print("Initializing LLM...")
+            print("Initializing LLM (hf batch path)...")
             llm = LLM(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
@@ -74,7 +76,7 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 gpu_memory_utilization=gpu_memory_utilization,
             )
         else:
-            print("Initializing SealToolsLLM...")
+            print("Initializing SealToolsLLM (vllm batch path)...")
             llm = SealToolsLLM(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
@@ -94,7 +96,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
     return eval_data
 
 @click.command()
-@click.option("--model", type=str, default="/bjzhyai03/workhome/niuboye/sft_model/merged_lora/checkpoint-20000")
+@click.option("--model", type=str, default="/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--ToolBench--ToolLLaMA-2-7b-v2/snapshots/f66993d6c40a644a7d7885d4c029943861e06113")
 @click.option("--dataset_name_list", type=list[str], default= ["test_out_domain", "dev", "test_in_domain"])
 @click.option("--input_path", type=str, default= "../../src/data/input_data/Seal-Tools")
 @click.option("--raw_data_path", type=str, default= "../../src/data/raw_pred_data/Seal-Tools")
@@ -148,7 +150,7 @@ def main(
                 with open(output_path, "r") as f:
                     results = json.load(f)
             else: # if not exist
-                if not conf.use_chat: # hf single generate
+                if not conf.use_chat: # hf batch generate
                     results = llm.batch_generate_complete(
                         [ed["conversations"][0]["value"] for ed in eval_data],
                         temperature=0
@@ -167,11 +169,11 @@ def main(
                     results = parsed_results
                 else: # vllm batch generate
                     messages = llm._create_messages(eval_data) # List[List[Dict]]
-                    if not conf.use_api_model:
+                    if not is_api:
                         with llm.start_server():
-                            results = llm.batch_generate_chat(messages, max_concurrent_calls=batch_size)
+                            results = llm.batch_generate_chat(messages)
                     else:
-                        results = llm.batch_generate_chat(messages, max_concurrent_calls=batch_size)
+                        results = llm.batch_generate_chat(messages)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
             return results
