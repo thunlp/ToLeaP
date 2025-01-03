@@ -64,12 +64,14 @@ def create_directories(eval_data_path: str, eval_result_path: str, model_name: s
 def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
                   max_model_len: int, gpu_memory_utilization: float) -> LLM:
     if not is_api:
-        if conf.hf_raw:
+        if not conf.use_chat:
             print("Initializing LLM...")
             llm = LLM(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
+                max_input_tokens=max_model_len,
+                gpu_memory_utilization=gpu_memory_utilization,
             )
         else:
             print("Initializing SealToolsLLM...")
@@ -77,12 +79,12 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
-                max_model_len=max_model_len,
+                max_input_tokens=max_model_len,
                 gpu_memory_utilization=gpu_memory_utilization,
             )
     else:
         print("Initializing API model...")
-        llm = LLM(model=model)
+        llm = LLM(model=model, is_api=is_api)
     return llm
 
 def load_eval_data(input_data_path: str) -> List[Dict]:
@@ -93,15 +95,13 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/niuboye/sft_model/merged_lora/checkpoint-20000")
-@click.option("--dataset_name_list", type=list[str], default= ["dev", "test_in_domain", "test_out_domain"])
+@click.option("--dataset_name_list", type=list[str], default= ["test_out_domain", "dev", "test_in_domain"])
 @click.option("--input_path", type=str, default= "../../src/data/input_data/Seal-Tools")
 @click.option("--raw_data_path", type=str, default= "../../src/data/raw_pred_data/Seal-Tools")
 @click.option("--eval_data_path", type=str, default= '../../src/data/pred_data/Seal-Tools')
 @click.option("--eval_result_path", type=str, default= '../../src/data/eval_result/Seal-Tools')
 @click.option("--is_api", type=bool, default=False)
-@click.option("--host", type=str, default="0.0.0.0")
-@click.option("--port", type=int, default=13488)
-@click.option("--tensor_parallel_size", type=int, default=2)
+@click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=8)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
 @click.option("--max_model_len", type=int, default=8192)
@@ -113,8 +113,6 @@ def main(
     eval_data_path: str, # processed prediction data path (folder)
     eval_result_path: str, # evaluation result path (folder)
     is_api: bool, 
-    host: str, 
-    port: int, 
     tensor_parallel_size: int, 
     batch_size: int,
     max_model_len: int,
@@ -136,7 +134,7 @@ def main(
         if not os.path.exists(raw_data_path):
             os.makedirs(raw_data_path)
         
-        if conf.hf_raw:
+        if not conf.use_chat:
             output_path = os.path.join(raw_data_path, f"hf_{dataset}_{model_name}.json")  
         else:
             if is_api:
@@ -150,20 +148,30 @@ def main(
                 with open(output_path, "r") as f:
                     results = json.load(f)
             else: # if not exist
-                if conf.hf_raw: # hf single generate
-                    results = []
-                    for ed in tqdm(eval_data, desc="Processing", unit="sample"):
-                        user_prompt = ed["conversations"][0]["value"] 
-                        full_reply = llm.single_generate(user_prompt)
-                        truncated_reply = full_reply[len(user_prompt):]  
-                        results.append(truncated_reply)
+                if not conf.use_chat: # hf single generate
+                    results = llm.batch_generate_complete(
+                        [ed["conversations"][0]["value"] for ed in eval_data],
+                        temperature=0
+                    )
+                    parsed_results = []
+                    for result in results:
+                        try:
+                            parsed_results.append(json.loads(result))
+                        except Exception as e:
+                            print(f"Error parsing JSON: {e}")
+                            parsed_results.append([{
+                                "api": "",
+                                "parameters": {},
+                                "responses": []
+                            }])
+                    results = parsed_results
                 else: # vllm batch generate
                     messages = llm._create_messages(eval_data) # List[List[Dict]]
-                    if not is_api:
+                    if not conf.use_api_model:
                         with llm.start_server():
-                            results = llm.batch_generate(messages, max_concurrent_calls=batch_size)
+                            results = llm.batch_generate_chat(messages, max_concurrent_calls=batch_size)
                     else:
-                        results = llm.batch_generate(messages, max_concurrent_calls=batch_size)
+                        results = llm.batch_generate_chat(messages, max_concurrent_calls=batch_size)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
             return results

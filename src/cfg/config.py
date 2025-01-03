@@ -18,8 +18,7 @@ class Config:
 
     port = os.getenv("PORT")
     host = os.getenv("HOST")
-    hf_raw = os.getenv("HF_RAW")
-    hf_pipeline = os.getenv("HF_PIPELINE")
+    use_chat = os.getenv("USE_CHAT") 
 
     use_llama = os.getenv("USE_LLAMA") == "True"
     llama_model_path = os.getenv("LLAMA_MODEL_PATH")

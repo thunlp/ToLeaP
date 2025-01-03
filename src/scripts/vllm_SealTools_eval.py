@@ -266,7 +266,6 @@ def transform_output_format(dataset_name, output_text):
                     if counter == 0:
                         return i
                 return -1
-                
             text = re.sub("'", '"', output_text)
             text = re.sub("\n", "", text)
             pattern = re.compile("\[\s*\{\s*\"api\"", re.DOTALL)
@@ -399,7 +398,7 @@ def raw_to_pred(raw_data_path, label_data_path):
                     }
         input_len = len(label_data["conversations"][0]["value"])
         output_text = raw_data[input_len:]
-        pred_text = transform_output_format("ToolLearning", output_text)
+        pred_text = transform_output_format("ToolLearning", raw_data)
         pred_output['predict'].append(pred_text)
         pred_list.append(pred_output)
     return pred_list
