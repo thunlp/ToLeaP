@@ -1,3 +1,6 @@
+import multiprocessing
+multiprocessing.set_start_method('spawn')
+
 import sys
 import os
 import click
@@ -20,8 +23,9 @@ class RoTBench(LLM):
         super().__init__(*args, **kwargs)
 
     def _create_messages(self, conversation_data: List[Dict]) -> List[List[Dict]]:
-        messages, message = [], []
+        messages = []
         for conv in conversation_data:
+            message = []
             for prompt in conv["conversations"]:
                 if prompt["from"] == "system":
                     message.append({
@@ -49,32 +53,30 @@ def parse_model_name(model_path: str) -> str:
         "checkpoint-30000": "afm30000",
         "checkpoint-40000": "afm40000",
         "checkpoint-50000": "afm50000",
+        "01c7f73d771dfac7d292323805ebc428287df4f9": "Llama2-7b-hf",
     }
     model_split = os.path.basename(model_path)
     return model_mapping.get(model_split, model_split)
 
-def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
-                  max_model_len: int, gpu_memory_utilization: float) -> LLM:
+def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int) -> LLM:
     if not is_api:
-        if conf.hf_raw:
-            print("Initializing LLM...")
+        if not conf.use_chat:
+            print("Initializing LLM (hf batch path)...")
             llm = LLM(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
             )
         else:
-            print("Initializing RoTBenchLLM...")
+            print("Initializing RoTBenchLLM (vllm batch path)...")
             llm = RoTBench(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
-                max_model_len=max_model_len,
-                gpu_memory_utilization=gpu_memory_utilization,
             )
     else:
         print("Initializing API model...")
-        llm = LLM(model=model)
+        llm = LLM(model=model, is_api=is_api)
     return llm
 
 def get_cata_list(answer_file: str) -> List[List[int]]:
@@ -265,75 +267,73 @@ def show_stats(check_list: List[List[int]], max_len: int):
 
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--meta-llama--Llama-2-7b-chat-hf/snapshots/f5db02db724555f92da89c216ac04704f23d4590")
-@click.option("--raw_data_path", type=str, default="../../src/data/input_data/RoTBench/First_turn/slight.json")
+@click.option("--datasets", type=list, default=["clean", "slight", "medium", "heavy", "union"])
 @click.option("--is_api", type=bool, default=False)
-@click.option("--host", type=str, default="localhost")
-@click.option("--port", type=int, default=13427)
 @click.option("--tensor_parallel_size", type=int, default=2)
-@click.option("--batch_size", type=int, default=20)
-@click.option("--gpu_memory_utilization", type=float, default=0.8)
-@click.option("--max_model_len", type=int, default=65535)
 def main(
     model: str, 
-    raw_data_path: str, 
     is_api: bool, 
-    host: str, 
-    port: int, 
     tensor_parallel_size: int, 
-    batch_size: int,
-    max_model_len: int,
-    gpu_memory_utilization: float,
+    datasets: list,
     ):
     ### Setup
-    with open(raw_data_path, "r", encoding='utf-8') as f:
-        eval_data = json.load(f)
-    model_name = parse_model_name(model)
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization)
-    cata_list = get_cata_list(raw_data_path)
-    check_list = [[] for _ in range(3)]  # [ts, pi, cf]
+    for dataset in datasets:
+        if not conf.use_chat: # hf batch generate
+            raw_data_path = f"../../src/data/input_data/RoTBench/First_turn_RC/{dataset}.json"
+        else:
+            raw_data_path = f"../../src/data/input_data/RoTBench/First_turn/{dataset}.json"
+        print(f"Loading data from {raw_data_path}")
+        with open(raw_data_path, "r", encoding='utf-8') as f:
+            eval_data = json.load(f)
+        model_name = parse_model_name(model)
+        llm = initialize_llm(model, is_api, conf, tensor_parallel_size)
+        cata_list = get_cata_list(raw_data_path)
+        check_list = [[] for _ in range(3)]  # [ts, pi, cf]
 
-    ### Run inference
-    data_filename = os.path.splitext(os.path.basename(raw_data_path))[0]
-    output_path = f"benchmark_results/{model_name}_rotbench_{data_filename}_results.json"
+        ### Run inference
+        data_filename = os.path.splitext(os.path.basename(raw_data_path))[0]
+        if not conf.use_chat:
+            output_path = f"benchmark_results/hf_{model_name}_rotbench_{data_filename}_results.json"
+        else:
+            if is_api:
+                output_path = f"benchmark_results/api_{model_name}_rotbench_{data_filename}_results.json"
+            else: 
+                output_path = f"benchmark_results/vllm_{model_name}_rotbench_{data_filename}_results.json"
+        print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
-    conf.hf_raw = True
-    def run_inference() -> List:
-        if os.path.exists(output_path): # if exists
-            with open(output_path, "r") as f:
-                results = json.load(f)
-        else: # if not
-            if conf.hf_raw: # hf single generate
-                results = []
-                for ed in tqdm(eval_data, desc="Processing", unit="sample"):
-                    for conv in ed["conversations"]:
-                        if conv["from"] == "system":
-                            system_prompt = conv["value"]
-                        elif conv["from"] == "user":
-                            user_prompt = conv["value"]
-                    assistant_reply = llm.single_generate(user_prompt=user_prompt+system_prompt)
-                    assistant_reply_partial = assistant_reply[len(user_prompt):]
-                    print(assistant_reply_partial)
-                    assert False
-                    results.append(assistant_reply_partial)
-            else:  # vllm batch generate
-                messages = llm._create_messages(eval_data)
-                if not is_api:
-                    with llm.start_server():
-                        results = llm.batch_generate(messages, max_concurrent_calls=batch_size)
-                else:
-                    results = llm.batch_generate(messages, max_concurrent_calls=batch_size)
-            with open(output_path, "w") as f:
-                json.dump(results, f, indent=4)
-        return results
-    
-    results = run_inference()
+        def run_inference() -> List:
+            if os.path.exists(output_path): # if exists
+                with open(output_path, "r") as f:
+                    results = json.load(f)
+            else: # if not 
+                if not conf.use_chat: # hf batch generate
+                    # for ed in eval_data:
+                    #     print(ed["content"])
+                    #     print(type(ed["content"]))
+                    #     assert False
+                    results = llm.batch_generate_complete(
+                        [ed["content"] for ed in eval_data],
+                        temperature=0
+                    )
+                else:  # vllm batch generate
+                    messages = llm._create_messages(eval_data)
+                    if not is_api:
+                        with llm.start_server():
+                            results = llm.batch_generate_chat(messages)
+                    else:
+                        results = llm.batch_generate_chat(messages)
+                with open(output_path, "w") as f:
+                    json.dump(results, f, indent=4)
+            return results
+        
+        results = run_inference()
 
-    ### Evaluation
-    with open(output_path, encoding="utf-8") as f:
-        test_data = json.load(f)
-    max_len = len(test_data)
-    general_eval(test_data, eval_data, check_list, cata_list)
-    show_stats(check_list, max_len)
+        ### Evaluation
+        # with open(output_path, encoding="utf-8") as f:
+        #     test_data = json.load(f)
+        # max_len = len(test_data)
+        # general_eval(test_data, eval_data, check_list, cata_list)
+        # show_stats(check_list, max_len)
 
 if __name__ == "__main__":
     main()
