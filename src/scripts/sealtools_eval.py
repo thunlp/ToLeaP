@@ -26,7 +26,7 @@ class SealToolsLLM(LLM):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _create_messages(self, conversation_data: List[Dict]) -> List[List[Dict]]:
+    def _create_messages_from_sharegpt(self, conversation_data: List[Dict]) -> List[List[Dict]]:
         messages = []
         for cov in conversation_data: # Dict
             message = []
@@ -64,7 +64,7 @@ def create_directories(eval_data_path: str, eval_result_path: str, model_name: s
     print(f"Mkdir '{os.path.abspath(eval_data_path)}' and '{os.path.abspath(eval_result_path)}'...")
 
 def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
-                  max_model_len: int, gpu_memory_utilization: float) -> LLM:
+                  max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
     if not is_api:
         if not conf.use_chat:
             print("Initializing LLM (hf batch path)...")
@@ -74,6 +74,7 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 use_sharegpt_format=False,
                 max_input_tokens=max_model_len,
                 gpu_memory_utilization=gpu_memory_utilization,
+                batch_size=batch_size
             )
         else:
             print("Initializing SealToolsLLM (vllm batch path)...")
@@ -83,6 +84,7 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 use_sharegpt_format=False,
                 max_input_tokens=max_model_len,
                 gpu_memory_utilization=gpu_memory_utilization,
+                batch_size=batch_size
             )
     else:
         print("Initializing API model...")
@@ -126,9 +128,9 @@ def main(
     create_directories(eval_data_path, eval_result_path, model_name)
 
     ### Init LLM
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization)
+    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
-    for dataset in dataset_name_list:
+    for dataset in dataset_name_list[:1]:
         input_data_path = os.path.join(input_path, f"{dataset}.json") 
         eval_data = load_eval_data(input_data_path)
 
@@ -155,18 +157,6 @@ def main(
                         [ed["conversations"][0]["value"] for ed in eval_data],
                         temperature=0
                     )
-                    parsed_results = []
-                    for result in results:
-                        try:
-                            parsed_results.append(json.loads(result))
-                        except Exception as e:
-                            print(f"Error parsing JSON: {e}")
-                            parsed_results.append([{
-                                "api": "",
-                                "parameters": {},
-                                "responses": []
-                            }])
-                    results = parsed_results
                 else: # vllm batch generate
                     messages = llm._create_messages(eval_data) # List[List[Dict]]
                     if not is_api:
