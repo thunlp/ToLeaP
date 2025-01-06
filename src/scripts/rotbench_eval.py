@@ -1,6 +1,3 @@
-import multiprocessing
-multiprocessing.set_start_method('spawn')
-
 import sys
 import os
 import click
@@ -53,12 +50,17 @@ def parse_model_name(model_path: str) -> str:
         "checkpoint-30000": "afm30000",
         "checkpoint-40000": "afm40000",
         "checkpoint-50000": "afm50000",
-        "01c7f73d771dfac7d292323805ebc428287df4f9": "Llama2-7b-hf",
+        "01c7f73d771dfac7d292323805ebc428287df4f9": "Llama-2-7b-hf",
+        "5c31dfb671ce7cfe2d7bb7c04375e44c55e815b1": "Llama-2-13b-hf",
+        "f66993d6c40a644a7d7885d4c029943861e06113": "ToolLLaMA-2-7b-v2",
+        "0e9e39f249a16976918f6564b8830bc894c89659": "Llama-3.1-8b-Instruct",
+        "d1893ac3ada07430e67e15005c022bcf68a86f0c": "ToolACE-8b",
     }
     model_split = os.path.basename(model_path)
     return model_mapping.get(model_split, model_split)
 
-def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int) -> LLM:
+def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
+                   max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
     if not is_api:
         if not conf.use_chat:
             print("Initializing LLM (hf batch path)...")
@@ -66,6 +68,9 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
+                max_input_tokens=max_model_len,
+                gpu_memory_utilization=gpu_memory_utilization,
+                batch_size=batch_size
             )
         else:
             print("Initializing RoTBenchLLM (vllm batch path)...")
@@ -73,6 +78,9 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
+                max_input_tokens=max_model_len,
+                gpu_memory_utilization=gpu_memory_utilization,
+                batch_size=batch_size
             )
     else:
         print("Initializing API model...")
@@ -266,17 +274,27 @@ def show_stats(check_list: List[List[int]], max_len: int):
             print(f"{metric}: {percentage:.2f}%")
 
 @click.command()
-@click.option("--model", type=str, default="/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--meta-llama--Llama-2-7b-chat-hf/snapshots/f5db02db724555f92da89c216ac04704f23d4590")
+@click.option("--model", type=str, default="/bjzhyai03/workhome/songzijun/huggingface/llama3.1_8b_instruct")
 @click.option("--datasets", type=list, default=["clean", "slight", "medium", "heavy", "union"])
+# @click.option("--datasets", type=list, default=["medium"])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=2)
+@click.option("--batch_size", type=int, default=16)
+@click.option("--gpu_memory_utilization", type=float, default=0.9)
+@click.option("--max_model_len", type=int, default=4096)
 def main(
     model: str, 
+    datasets: list,
     is_api: bool, 
     tensor_parallel_size: int, 
-    datasets: list,
+    batch_size: int,
+    max_model_len: int,
+    gpu_memory_utilization: float,
     ):
     ### Setup
+    model_name = parse_model_name(model)
+    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+
     for dataset in datasets:
         if not conf.use_chat: # hf batch generate
             raw_data_path = f"../../src/data/input_data/RoTBench/First_turn_RC/{dataset}.json"
@@ -285,20 +303,20 @@ def main(
         print(f"Loading data from {raw_data_path}")
         with open(raw_data_path, "r", encoding='utf-8') as f:
             eval_data = json.load(f)
-        model_name = parse_model_name(model)
-        llm = initialize_llm(model, is_api, conf, tensor_parallel_size)
+        
         cata_list = get_cata_list(raw_data_path)
         check_list = [[] for _ in range(3)]  # [ts, pi, cf]
 
         ### Run inference
-        data_filename = os.path.splitext(os.path.basename(raw_data_path))[0]
         if not conf.use_chat:
-            output_path = f"benchmark_results/hf_{model_name}_rotbench_{data_filename}_results.json"
+            output_path = f"benchmark_results/{model_name}/hf_{model_name}_rotbench_{dataset}_results.json"
         else:
             if is_api:
-                output_path = f"benchmark_results/api_{model_name}_rotbench_{data_filename}_results.json"
+                output_path = f"benchmark_results/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
             else: 
-                output_path = f"benchmark_results/vllm_{model_name}_rotbench_{data_filename}_results.json"
+                output_path = f"benchmark_results/{model_name}/vllm_{model_name}_rotbench_{dataset}_results.json"
+        if not os.path.exists(f"benchmark_results/{model_name}"):
+            os.makedirs(f"benchmark_results/{model_name}")
         print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
         def run_inference() -> List:
@@ -307,10 +325,6 @@ def main(
                     results = json.load(f)
             else: # if not 
                 if not conf.use_chat: # hf batch generate
-                    # for ed in eval_data:
-                    #     print(ed["content"])
-                    #     print(type(ed["content"]))
-                    #     assert False
                     results = llm.batch_generate_complete(
                         [ed["content"] for ed in eval_data],
                         temperature=0
