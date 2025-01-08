@@ -115,6 +115,7 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
 
     print("Bad Cases are those that cannot be parsed as JSON or has none of the required fields.")
     print(f"Total bad cases: {len(bad_cases)}/{len(results)}")
+    json.dump(bad_cases, open(f"{model.split('/')[-1]}_{data_split}_bad_cases.json", "w"), indent=4)
 
     evaluate(parsed_results, labels, data_split, tool_desc)
 
