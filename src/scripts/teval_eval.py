@@ -9,7 +9,7 @@ import click
 import sys
 import time
 current_dir = os.path.dirname(os.path.abspath(__file__)) 
-utils_dir = os.path.join(current_dir, '..')
+utils_dir = os.path.join(current_dir, '../..')
 sys.path.append(utils_dir)
 from utils.llm import LLM
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -110,7 +110,7 @@ def main(
            model=model,
            tensor_parallel_size=tensor_parallel_size,
            gpu_memory_utilization=gpu_memory_utilization,
-           use_api_model=is_api
+           is_api=is_api
        )
        
        print(f"Tested {tested_num} samples, left {test_num} samples, total {total_num} samples")
@@ -188,10 +188,8 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num = 1, batch_size
         batch_infer_list.append(prompt)
         batch_infer_ids.append(idx)
         if len(batch_infer_ids) == batch_size or idx == random_list[-1]:
-            predictions = llm.batch_generate(
-                test_cases=batch_infer_list,
-                max_concurrent_calls=batch_size,
-                temperature=0  
+            predictions = llm.batch_generate_chat(
+                test_cases=batch_infer_list, 
             )
             for ptr, prediction in enumerate(predictions):
                 data_ptr = batch_infer_ids[ptr]
