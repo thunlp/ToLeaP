@@ -1,0 +1,30 @@
+model:
+  base_model:
+    path: "/path/to/base/model"
+    tensor_parallel_size: 1
+    gpu_memory_utilization: 0.9
+    use_api: false
+    temperature: 0.7
+    server:
+      host: "localhost"
+      port: 8000
+      api_key: ""
+
+  critic_model:
+    path: "/path/to/critic/model"
+    tensor_parallel_size: 1
+    gpu_memory_utilization: 0.9
+    use_api: false
+    temperature: 0.3
+    server:
+      host: "localhost"
+      port: 8001
+      api_key: ""
+
+data:
+  input_dir: "data/input"
+  output_dir: "outputs"
+  batch_size: 4
+
+memory:
+  path: "memory.json" 
