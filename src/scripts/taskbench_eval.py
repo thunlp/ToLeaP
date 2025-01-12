@@ -55,15 +55,16 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
     tool_desc = json.load(open(tool_desc_file, "r"))
     eval_data = json.load(open(data_path, "r"))
     labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
+    output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
 
-    if not is_api:
-        llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
-    else:
-        llm = LLM(model=model)
+    if not os.path.exists(output_path):
+        print("Did not find output_path, initializing LLM")
+        if not is_api:
+            llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
+        else:
+            llm = LLM(model=model)
 
     # Run inference
-    output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
-    parsed_output_path = f"{model.split('/')[-1]}_{data_split}_parsed_results.json"
 
     def run_inference():
         if os.path.exists(output_path):
@@ -75,7 +76,7 @@ def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_
             json.dump(results, open(output_path, "w"), indent=4)
         return results
 
-    if not os.path.exists(parsed_output_path):
+    if not os.path.exists(output_path):
         results = run_inference()
     else:
         results = json.load(open(output_path, "r"))
@@ -197,9 +198,9 @@ def evaluate(predictions, labels, data_split, tool_desc):
             pred_tasklinks.append([])
             label_tasklinks.append([])
             for i in range(len(all_pred_names) - 1):
-                pred_tasklinks[-1].append(all_pred_names[i] + " - " + all_pred_names[i+1])
+                pred_tasklinks[-1].append(str(all_pred_names[i]) + " - " + str(all_pred_names[i+1]))
             for i in range(len(all_label_names) - 1):
-                label_tasklinks[-1].append(all_label_names[i] + " - " + all_label_names[i+1])
+                label_tasklinks[-1].append(str(all_label_names[i]) + " - " + str(all_label_names[i+1]))
 
     # calculate task args
     pred_taskargnames = []
@@ -303,7 +304,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
     name_f1 = 0
     for pred_name, label_name in zip(pred_node_names, label_node_names):
         ground_truth = set(label_name)
-        prediction = set(pred_name)
+        prediction = set([str(pn) for pn in pred_name])
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
