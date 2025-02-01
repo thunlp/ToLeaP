@@ -74,23 +74,24 @@ python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/
 ### BFCL
 Set Up the Environment
 ```
-conda create -n BFCL python=3.10 && conda activate BFCL
+conda create -n BFCL python=3.10 -y && conda activate BFCL
 bash bfcl_setup.sh
 ```
 
-For locally downloaded models, you need to add the corresponding processor in the handler mapping file: `gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`.
+For locally downloaded models, you need to add the corresponding processor in the handler mapping file `gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 108 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`.
 
 To evaluate with closed-resource models
 
 - **Inference**:
-  ```bash
+  You can set the `api_key` and `base_url` in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/api_inference`.
+  ```
   bfcl generate --model MODEL_NAME --test-category TEST_CATEGORY --num-threads 1
   # Example:
   bfcl generate --model gpt-3.5-turbo-0125 --test-category parallel,multiple,simple,parallel_multiple,java,javascript,irrelevance,multi_turn --num-threads 1
   ```
 
 - **Evaluation**:
-  ```bash
+  ```
   bfcl evaluate --model gpt-3.5-turbo-0125
   ```
   
