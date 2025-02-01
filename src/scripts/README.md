@@ -40,7 +40,7 @@ python sealtools_eval.py --model xxx --is_api True
 The scores and the original inference results along with bad cases will be saved under the path `src/data/eval_result/Seal-Tools`.
 
 ### TaskBench Evaluation
-In TaskBench, \textbf{ROUGE-1} examines whether the model can correctly capture and generate individual word matches, reflecting the surface-level accuracy of task decomposition, while \textbf{ROUGE-2} extends this by evaluating adjacent word pair matches to provide a more precise assessment of task structuring. \textbf{Node F1} assesses the model’s accuracy in selecting the appropriate tool for each subtask, and \textbf{Edge F1} evaluates its understanding of dependencies between tools, ensuring correct connections in complex workflows. \textbf{Parameter Name F1} measures whether the model correctly identifies required parameters, whereas \textbf{Parameter Name \& Value F1} further ensures that, in addition to recognizing parameters, the model assigns the correct values, thereby validating the completeness and accuracy of tool configuration.
+In TaskBench, **ROUGE-1** examines whether the model can correctly capture and generate individual word matches, reflecting the surface-level accuracy of task decomposition, while **ROUGE-2** extends this by evaluating adjacent word pair matches to provide a more precise assessment of task structuring. **Node F1** assesses the model’s accuracy in selecting the appropriate tool for each subtask, and **Edge F1** evaluates its understanding of dependencies between tools, ensuring correct connections in complex workflows. **Parameter Name F1** measures whether the model correctly identifies required parameters, whereas **Parameter Name & Value F1** further ensures that, in addition to recognizing parameters, the model assigns the correct values, thereby validating the completeness and accuracy of tool configuration.
 
 To evaluate with open-source models:
 ```
@@ -59,7 +59,7 @@ python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/
 ```
 
 ### BFCL
-The evaluation framework for BFCL focuses on \textbf{accuracy} as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including simple, multiple, parallel, multiple-parallel, irrelevance, and multi-turn tasks.
+The evaluation framework for BFCL focuses on **accuracy** as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including simple, multiple, parallel, multiple-parallel, irrelevance, and multi-turn tasks.
 
 Set Up the Environment
 ```
@@ -85,7 +85,7 @@ To evaluate with closed-resource models
   ```
   
 ### T-Eval
-T-Eval uses accuracy as the primary evaluation metric, measuring the model’s \textbf{correctness} across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
+T-Eval uses accuracy as the primary evaluation metric, measuring the model’s **correctness** across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
 
 Set Up the Environment
 ```bash
@@ -114,7 +114,7 @@ bash eval_all.sh mistral8b mistral8b False
 The results will be found in `src/scripts/T-Eval/work_dirs`.
 
 ### InjecAgent Evaluation
-InjecAgent primarily assesses the model’s resilience under adversarial conditions, focusing on the validity of responses and the success rate of attacks. \textbf{Valid rate} measures the proportion of responses that are both non-empty and correctly formatted under attack scenarios. Attack success rate (ASR-valid) specifically quantifies the proportion of successful attacks within valid responses, offering a finer-grained evaluation of model vulnerability. \textbf{ASR-valid} is further categorized into specific attack types: \textbf{ASR-valid (Direct Harm)} evaluates the model’s susceptibility to direct harm attacks, where it executes malicious tool-based instructions; \textbf{ASR-valid (S1)} and \textbf{ASR-valid (S2)} respectively assess the success rates of the first and second stages of data-stealing attacks, corresponding to data extraction and data transmission. \textbf{ASR-valid (Data Stealing)} aggregates the results of S1 and S2 to provide a comprehensive measure of vulnerability to data theft, while \textbf{ASR-valid (Total)} encapsulates the overall attack success rate across all tested adversarial scenarios.  
+InjecAgent primarily assesses the model’s resilience under adversarial conditions, focusing on the validity of responses and the success rate of attacks. **Valid rate** measures the proportion of responses that are both non-empty and correctly formatted under attack scenarios. Attack success rate (ASR-valid) specifically quantifies the proportion of successful attacks within valid responses, offering a finer-grained evaluation of model vulnerability. **ASR-valid** is further categorized into specific attack types: **ASR-valid (Direct Harm)** evaluates the model’s susceptibility to direct harm attacks, where it executes malicious tool-based instructions; **ASR-valid (S1)** and **ASR-valid (S2)** respectively assess the success rates of the first and second stages of data-stealing attacks, corresponding to data extraction and data transmission. **ASR-valid (Data Stealing)** aggregates the results of S1 and S2 to provide a comprehensive measure of vulnerability to data theft, while **ASR-valid (Total)** encapsulates the overall attack success rate across all tested adversarial scenarios.  
 
 To evaluate with open-resource models
 ```
