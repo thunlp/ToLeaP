@@ -2,41 +2,24 @@ import sys
 import os
 import click
 import json
-import requests
 from typing import List, Dict
-from sklearn.metrics import f1_score
 from rouge_score import rouge_scorer
 
-current_dir = os.path.dirname(os.path.abspath(__file__)) 
+current_dir = os.path.dirname(os.path.abspath(__file__))
 utils_dir = os.path.join(current_dir, '..')
 sys.path.append(utils_dir)
 
 from utils.llm import LLM, extract_first_json
 
-class TaskbenchLLM(LLM):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def _create_messages(self, conversation_data: Dict) -> List[Dict]:
-        """Create messages list from conversation data"""
-        messages = []
-        
-        # getting the last as label
-        conversations = conversation_data["conversations"][:-1]  
-        
-        for conv in conversations:
-            if conv["from"] == "human":
-                messages.append({
-                    "role": "user",
-                    "content": conv["value"]
-                })
-            elif conv["from"] == "gpt":
-                messages.append({
-                    "role": "assistant",
-                    "content": conv["value"]
-                })
-        
-        return messages
+def create_messages(conversation_data: Dict) -> List[Dict]:
+    messages = []
+    for cov in conversation_data: # Dict
+        message = []
+        for prompt in cov.get("conversations", []): # List
+            if prompt.get("from") == "human":
+                message.append({"role": "user", "content": prompt["value"]})
+        messages.append(message)
+    return messages
 
 @click.command()
 @click.option("--model", type=str, default="meta-llama/Llama-2-7b-chat-hf")
@@ -44,39 +27,42 @@ class TaskbenchLLM(LLM):
 @click.option("--is_api", type=bool, default=False)
 @click.option("--host", type=str, default="localhost")
 @click.option("--port", type=int, default=13427)
-@click.option("--tensor_parallel_size", type=int, default=1)
-@click.option("--batch_size", type=int, default=20)
+@click.option("--tensor_parallel_size", type=int, default=4)
+@click.option("--batch_size", type=int, default=16)
 def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
     # Initialize
     data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-    tool_desc_path = f"https://raw.githubusercontent.com/microsoft/JARVIS/refs/heads/main/taskbench/data_{data_split}/tool_desc.json"
-    # tool_desc = requests.get(tool_desc_path).json()
-    tool_desc_file = os.path.join(os.path.dirname(data_path), f"taskbench_tool_desc_{data_split}.json")
+    tool_path = "/home/test/test03/szj/BodhiAgent-main/src/data/sft_data/TaskBench/"
+    tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
     tool_desc = json.load(open(tool_desc_file, "r"))
     eval_data = json.load(open(data_path, "r"))
     labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
-    output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
 
-    if not os.path.exists(output_path):
-        print("Did not find output_path, initializing LLM")
-        if not is_api:
-            llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
-        else:
-            llm = LLM(model=model)
+    if not is_api:
+        llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
+    else:
+        llm = LLM(model=model)
 
     # Run inference
+    output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
+    parsed_output_path = f"{model.split('/')[-1]}_{data_split}_parsed_results.json"
 
     def run_inference():
         if os.path.exists(output_path):
             results = json.load(open(output_path, "r"))
         else:
-            results = llm.batch_generate_complete(
-                [d["conversations"][0]["value"] for d in eval_data]
-            )
+            if is_api:
+                pass
+                messages = create_messages(eval_data)
+                results = llm.batch_generate_chat(messages)
+            else:
+                results = llm.batch_generate_complete(
+                    [d["conversations"][0]["value"] for d in eval_data]
+                )
             json.dump(results, open(output_path, "w"), indent=4)
         return results
 
-    if not os.path.exists(output_path):
+    if not os.path.exists(parsed_output_path):
         results = run_inference()
     else:
         results = json.load(open(output_path, "r"))
@@ -198,9 +184,9 @@ def evaluate(predictions, labels, data_split, tool_desc):
             pred_tasklinks.append([])
             label_tasklinks.append([])
             for i in range(len(all_pred_names) - 1):
-                pred_tasklinks[-1].append(str(all_pred_names[i]) + " - " + str(all_pred_names[i+1]))
+                pred_tasklinks[-1].append(all_pred_names[i] + " - " + all_pred_names[i+1])
             for i in range(len(all_label_names) - 1):
-                label_tasklinks[-1].append(str(all_label_names[i]) + " - " + str(all_label_names[i+1]))
+                label_tasklinks[-1].append(all_label_names[i] + " - " + all_label_names[i+1])
 
     # calculate task args
     pred_taskargnames = []
@@ -304,7 +290,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
     name_f1 = 0
     for pred_name, label_name in zip(pred_node_names, label_node_names):
         ground_truth = set(label_name)
-        prediction = set([str(pn) for pn in pred_name])
+        prediction = set(pred_name)
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
@@ -368,4 +354,3 @@ def evaluate(predictions, labels, data_split, tool_desc):
 
 if __name__ == "__main__":
     main()
-
