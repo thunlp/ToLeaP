@@ -1,5 +1,4 @@
 ## 🛠️ Evaluation Method
-以下是润色后的版本，语言更加简洁清晰，符合GitHub文档的规范：
 
 ### Configuring the Evaluation Method
 - For **hf batch inference**, set the default values in `cfg/config.yml`.
