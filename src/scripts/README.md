@@ -16,13 +16,12 @@ To evaluate with open-source models:
 cd src/scripts
 python rotbench_eval.py --model xxx
 ```
-
 To evaluate with closed-source models:
 ```
 cd src/scripts
 python rotbench_eval.py --model xxx --is_api True
 ```
-
+The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/rotbench`.
 ### SealTools Evaluation
 In SealTools, **Format ACC** assesses the correctness of the model's output structure, while **Tool P/R/F1** evaluates the model's ability to choose the correct tool. **Parameter P/R/F1**, on the other hand, measures the model’s capability in accurately filling in tool parameters.  
 
