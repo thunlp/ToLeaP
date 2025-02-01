@@ -68,7 +68,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 @click.option("--eval_data_path", type=str, default= '../../src/data/pred_data/Seal-Tools')
 @click.option("--eval_result_path", type=str, default= '../../src/data/eval_result/Seal-Tools')
 @click.option("--is_api", type=bool, default=False)
-@click.option("--tensor_parallel_size", type=int, default=1
+@click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=32)
 @click.option("--gpu_memory_utilization", type=float, default=0.8)
 @click.option("--max_model_len", type=int, default=4096)
