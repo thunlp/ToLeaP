@@ -1,9 +1,6 @@
 import argparse
 import os
-import random
-import shutil
 import mmengine
-import teval.evaluators as evaluator_factory
 from tqdm import tqdm
 import click
 import sys
@@ -16,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class TevalLLM(LLM):
-    def __init__(self, max_tokens=1024, *args, **kwargs): 
+    def __init__(self, max_tokens=512, *args, **kwargs): 
         super().__init__(*args, **kwargs)
         self.max_tokens = max_tokens
 
@@ -70,80 +67,105 @@ class TevalLLM(LLM):
 
 @click.command()
 @click.option("--model", type=str, default="/hy-tmp/model-dir")
-@click.option("--dataset_path", type=str, default="data/instruct_v2.json")
+@click.option("--dataset_path", type=str, help="Dataset path list, format: [path1, path2, ...]")
 @click.option("--is_api", type=bool, default=False)
 @click.option("--out_dir", type=str, default="work_dirs/")
-@click.option("--out_name", type=str, default="tmp.json")
+@click.option("--out_name", type=str, help="Output filename list, format: [name1, name2, ...]")
+@click.option("--eval", type=str, help="Evaluation type list, format: [type1, type2, ...]")
+@click.option("--prompt_type", type=str, help="Prompt type list, format: [type1, type2, ...]")
 @click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=12)
 @click.option("--gpu_memory_utilization", type=float, default=0.9) 
 @click.option("--test_num", type=int, default=-1)
 @click.option("--resume", is_flag=True)
-@click.option("--eval", type=click.Choice(['instruct', 'reason', 'plan', 'retrieve', 'review', 'understand', 'rru']))
-@click.option("--prompt_type", type=click.Choice(['json', 'str']), default='json')
-@click.option("--model_name", type=str, default="qwen2.5")
+@click.option("--model_name", type=str, default="")
 def main(
-   model: str,
-   dataset_path: str,
-   is_api: bool,
-   out_dir: str,
-   out_name: str,
-   tensor_parallel_size: int, 
-   batch_size: int,
-   gpu_memory_utilization: float,
-   test_num: int,
-   resume: bool,
-   eval: str,
-   prompt_type: str,
-   model_name: str
+    model: str,
+    dataset_path: str,
+    is_api: bool,
+    out_dir: str,
+    out_name: str,
+    eval: str,
+    prompt_type: str,
+    tensor_parallel_size: int,
+    batch_size: int,
+    gpu_memory_utilization: float,
+    test_num: int,
+    resume: bool,
+    model_name: str
 ):
-   os.makedirs(out_dir, exist_ok=True)
-   tmp_folder_name = os.path.splitext(out_name)[0]
-   os.makedirs(os.path.join(out_dir, tmp_folder_name), exist_ok=True)
+    def parse_list_arg(arg):
+        if arg and arg.startswith('[') and arg.endswith(']'):
+            return [item.strip() for item in arg[1:-1].split(',')]
+        return [arg]
 
-   dataset, tested_num, total_num = load_dataset(dataset_path, out_dir, resume, tmp_folder_name)
-   test_num = max(total_num - tested_num, 0) if test_num == -1 else max(min(test_num - tested_num, total_num - tested_num), 0)
-   
-   output_file_path = os.path.join(out_dir, out_name)
-   if test_num > 0:
-       llm = TevalLLM(
-           model=model,
-           tensor_parallel_size=tensor_parallel_size,
-           gpu_memory_utilization=gpu_memory_utilization,
-           is_api=is_api
-       )
-       
-       print(f"Tested {tested_num} samples, left {test_num} samples, total {total_num} samples")
-       context = llm.start_server() if not is_api else nullcontext()
-       with context:
-           prediction = infer(dataset, llm, out_dir, tmp_folder_name, test_num, batch_size)
-           mmengine.dump(prediction, output_file_path)
+    dataset_paths = parse_list_arg(dataset_path)
+    out_names = parse_list_arg(out_name)
+    eval_types = parse_list_arg(eval)
+    prompt_types = parse_list_arg(prompt_type)
 
-   if eval:
-       eval_mapping = {
-           'instruct': "InstructEvaluator",
-           'plan': "PlanningEvaluator", 
-           'review': "ReviewEvaluator",
-           'reason': "ReasonRetrieveUnderstandEvaluator",
-           'retrieve': "ReasonRetrieveUnderstandEvaluator",
-           'understand': "ReasonRetrieveUnderstandEvaluator",
-           'rru': "ReasonRetrieveUnderstandEvaluator"
-       }
-       
-       bert_score_model =  "all-mpnet-base-v2"
-       json_path = os.path.join(out_dir, f"{model.split('/')[-1]}_{-1}_{'zh' if '_zh' in dataset_path else ''}.json")
+    if len(set(map(len, [dataset_paths, out_names, eval_types, prompt_types]))) > 1:
+        raise ValueError("The length of all list parameters must be the same.")
 
-       evaluator = getattr(evaluator_factory, eval_mapping[eval])(output_file_path, default_prompt_type=prompt_type, eval_type=eval, bert_score_model=bert_score_model)
-       
-       results = mmengine.load(json_path) if os.path.exists(json_path) else {}
-       eval_results = evaluator.evaluate()
-       results[f"{eval}_{prompt_type}"] = eval_results
-       
-       print(f"Evaluation Results:\n{eval_results}")
-       print(f"Writing Results to {json_path}")
-       mmengine.dump(results, json_path)
+    os.makedirs(out_dir, exist_ok=True)
 
+    print("\n=== Task Overview ===")
+    print("Total tasks:", len(dataset_paths))
+    for i, (d_path, o_name, e_type, p_type) in enumerate(
+        zip(dataset_paths, out_names, eval_types, prompt_types)
+    ):
+        print(f"\nTask {i+1}:")
+        print(f"  Dataset: {d_path}")
+        print(f"  Output:  {o_name}")
+        print(f"  Eval:    {e_type}")
+        print(f"  Prompt:  {p_type}")
+    print("\n=== Starting Tasks ===\n")
 
+    llm = TevalLLM(
+        model=model,
+        tensor_parallel_size=tensor_parallel_size,
+        gpu_memory_utilization=gpu_memory_utilization,
+        is_api=is_api
+    )
+
+    with (llm.start_server() if not is_api else nullcontext()):
+        for i, (curr_dataset, curr_out_name, curr_eval, curr_prompt) in enumerate(
+            zip(dataset_paths, out_names, eval_types, prompt_types)
+        ):
+            print(f"\n=== Processing task {i+1}/{len(dataset_paths)} ===")
+            print(f"Dataset: {curr_dataset}")
+            print(f"Eval type: {curr_eval}")
+            
+            tmp_folder_name = os.path.splitext(curr_out_name)[0]
+            os.makedirs(os.path.join(out_dir, tmp_folder_name), exist_ok=True)
+
+            dataset, tested_num, total_num = load_dataset(curr_dataset, out_dir, resume, tmp_folder_name)
+            test_num_curr = max(total_num - tested_num, 0) if test_num == -1 else max(min(test_num - tested_num, total_num - tested_num), 0)
+            
+            if test_num_curr > 0:
+                print(f"Tested {tested_num} samples, left {test_num_curr} samples, total {total_num} samples")
+                
+                output_file_path = os.path.join(out_dir, curr_out_name)
+                prediction = infer(dataset, llm, out_dir, tmp_folder_name, test_num_curr, batch_size)
+                mmengine.dump(prediction, output_file_path)
+
+                if curr_eval:
+                    eval_mapping = {
+                        'instruct': "InstructEvaluator",
+                        'plan': "PlanningEvaluator", 
+                        'review': "ReviewEvaluator",
+                        'reason': "ReasonRetrieveUnderstandEvaluator",
+                        'retrieve': "ReasonRetrieveUnderstandEvaluator",
+                        'understand': "ReasonRetrieveUnderstandEvaluator",
+                        'rru': "ReasonRetrieveUnderstandEvaluator"
+                    }
+                    
+                    bert_score_model = "/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--sentence-transformers--all-mpnet-base-v2/snapshots/9a3225965996d404b775526de6dbfe85d3368642"
+                    json_path = os.path.join(out_dir, f"{model.split('/')[-1]}_{-1}_{'zh' if '_zh' in curr_dataset else ''}.json")
+
+                    
+                    results = mmengine.load(json_path) if os.path.exists(json_path) else {}
+                    mmengine.dump(results, json_path)
 
 def parse_args():
     parser = argparse.ArgumentParser()
