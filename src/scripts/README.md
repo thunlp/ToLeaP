@@ -40,20 +40,7 @@ python sealtools_eval.py --model xxx --is_api True
 The scores and the original inference results along with bad cases will be saved under the path `src/data/eval_result/Seal-Tools`.
 
 ### TaskBench Evaluation
-
-TaskBench measures task step correctness, action correctness and action input correctness separately.  
-Task Step Evaluation:
-- **ROUGE**: Measures the similarity between the predicted task steps and the ground truth.
-- **BERTScore**: Similar to ROUGE, but uses BERT embeddings to measure similarity.
-
-Action Evaluation:
-- **Node F1**: Measures f1 of the predicted sequence of actions against the ground truth. (Order insensitive)  
-- **Edge F1**: Concatenate consecutive actions and compare against the ground truth. (Order sensitive)
-
-Action Input Evaluation:
-Assume action input is a json object with key-value pairs. Keys are the parameter names and values are the parameter values.
-- **Name F1**: Measures f1 of the predicted parameter names against the ground truth. (Order insensitive)  
-- **Value F1**: Measures f1 of the predicted parameter values against the ground truth. (Order insensitive)
+In TaskBench, \textbf{ROUGE-1} examines whether the model can correctly capture and generate individual word matches, reflecting the surface-level accuracy of task decomposition, while \textbf{ROUGE-2} extends this by evaluating adjacent word pair matches to provide a more precise assessment of task structuring. \textbf{Node F1} assesses the model’s accuracy in selecting the appropriate tool for each subtask, and \textbf{Edge F1} evaluates its understanding of dependencies between tools, ensuring correct connections in complex workflows. \textbf{Parameter Name F1} measures whether the model correctly identifies required parameters, whereas \textbf{Parameter Name \& Value F1} further ensures that, in addition to recognizing parameters, the model assigns the correct values, thereby validating the completeness and accuracy of tool configuration.
 
 To evaluate with open-source models:
 ```
@@ -72,6 +59,8 @@ python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/
 ```
 
 ### BFCL
+The evaluation framework for BFCL focuses on \textbf{accuracy} as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including simple, multiple, parallel, multiple-parallel, irrelevance, and multi-turn tasks.
+
 Set Up the Environment
 ```
 conda create -n BFCL python=3.10 -y && conda activate BFCL
@@ -96,6 +85,8 @@ To evaluate with closed-resource models
   ```
   
 ### T-Eval
+T-Eval uses accuracy as the primary evaluation metric, measuring the model’s \textbf{correctness} across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
+
 Set Up the Environment
 ```bash
 conda create -n teval python=3.10 && conda activate teval
@@ -123,6 +114,8 @@ bash eval_all.sh mistral8b mistral8b False
 The results will be found in `src/scripts/T-Eval/work_dirs`.
 
 ### InjecAgent Evaluation
+InjecAgent primarily assesses the model’s resilience under adversarial conditions, focusing on the validity of responses and the success rate of attacks. \textbf{Valid rate} measures the proportion of responses that are both non-empty and correctly formatted under attack scenarios. Attack success rate (ASR-valid) specifically quantifies the proportion of successful attacks within valid responses, offering a finer-grained evaluation of model vulnerability. \textbf{ASR-valid} is further categorized into specific attack types: \textbf{ASR-valid (Direct Harm)} evaluates the model’s susceptibility to direct harm attacks, where it executes malicious tool-based instructions; \textbf{ASR-valid (S1)} and \textbf{ASR-valid (S2)} respectively assess the success rates of the first and second stages of data-stealing attacks, corresponding to data extraction and data transmission. \textbf{ASR-valid (Data Stealing)} aggregates the results of S1 and S2 to provide a comprehensive measure of vulnerability to data theft, while \textbf{ASR-valid (Total)} encapsulates the overall attack success rate across all tested adversarial scenarios.  
+
 To evaluate with open-resource models
 ```
 python injecagent_eval.py --model_type OpenModel --model_name xxx --use_cach
