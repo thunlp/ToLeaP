@@ -57,6 +57,7 @@ python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/
 python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/TaskBench/taskbench_data_huggingface.json
 python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/TaskBench/taskbench_data_multimedia.json
 ```
+The original inference results along with bad cases will be saved under the path `src/scripts`.
 
 ### BFCL
 The evaluation framework for BFCL focuses on **accuracy** as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including simple, multiple, parallel, multiple-parallel, irrelevance, and multi-turn tasks.
@@ -83,6 +84,8 @@ To evaluate with closed-resource models
   ```
   bfcl evaluate --model gpt-3.5-turbo-0125
   ```
+
+The original inference results along with bad cases will be saved under the path `src/scripts/gorilla/berkeley-function-call-leaderboard/result`.
   
 ### T-Eval
 T-Eval uses accuracy as the primary evaluation metric, measuring the model’s **correctness** across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
@@ -122,3 +125,5 @@ python injecagent_eval.py --model_type OpenModel --model_name xxx --use_cach
 ```
 
 To evaluate with close-resource models, replace `model_type` with `GPT` or `Claude`.
+
+The results will be found in `src/scripts/InjecAgent_results`.
