@@ -119,6 +119,7 @@ bash test_all_teval.sh vllm qwen_PATH qwen2.5 False
 # Evaluate (model_name, display_name, is_api)
 bash eval_all.sh mistral8b mistral8b False  
 ```
+The results will be found in `src/scripts/T-Eval/work_dirs`.
 
 ### InjecAgent Evaluation
 To evaluate with open-resource models
