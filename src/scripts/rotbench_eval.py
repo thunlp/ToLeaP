@@ -2,11 +2,8 @@ import sys
 import os
 import click
 import json
-import requests
 from typing import List, Dict
-from sklearn.metrics import f1_score
 from ast import literal_eval
-from tqdm import tqdm
 
 current_dir = os.path.dirname(os.path.abspath(__file__)) 
 utils_dir = os.path.join(current_dir, '..')
@@ -15,162 +12,127 @@ sys.path.append(utils_dir)
 from cfg.config import Config
 from utils.llm import LLM
 
-class RoTBench(LLM):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def _create_messages(self, conversation_data: List[Dict]) -> List[List[Dict]]:
-        messages = []
-        for conv in conversation_data:
-            message = []
-            for prompt in conv["conversations"]:
-                if prompt["from"] == "system":
-                    message.append({
-                        "role": "system",
-                        "content": prompt["value"]
-                    })
-                elif prompt["from"] == "user":
-                    message.append({
-                        "role": "user",
-                        "content": prompt["value"]
-                    })
-            messages.append(message)
-        return messages
+def create_messages(conversation_data: List[Dict]) -> List[List[Dict]]:
+    messages = []
+    for conv in conversation_data:
+        message = []
+        for prompt in conv["conversations"]:
+            if prompt["from"] == "system":
+                message.append({
+                    "role": "system",
+                    "content": prompt["value"]
+                })
+            elif prompt["from"] == "user":
+                message.append({
+                    "role": "user",
+                    "content": prompt["value"]
+                })
+        messages.append(message)
+    return messages
 
 conf = Config()
-
-def parse_model_name(model_path: str) -> str:
-    model_mapping = {
-        "bb46c15ee4bb56c5b63245ef50fd7637234d6f75": "Qwen2.5-7B-Instruct",
-        "a2cb7a712bb6e5e736ca7f8cd98167f81a0b5bd8": "Llama-2-13b-chat-hf",
-        "f5db02db724555f92da89c216ac04704f23d4590": "Llama-2-7b-chat-hf",
-        "f66993d6c40a644a7d7885d4c029943861e06113": "ToolLLaMA-2-7b-v2",
-        "checkpoint-10000": "afm10000",
-        "checkpoint-20000": "afm20000",
-        "checkpoint-30000": "afm30000",
-        "checkpoint-40000": "afm40000",
-        "checkpoint-50000": "afm50000",
-        "01c7f73d771dfac7d292323805ebc428287df4f9": "Llama-2-7b-hf",
-        "5c31dfb671ce7cfe2d7bb7c04375e44c55e815b1": "Llama-2-13b-hf",
-        "f66993d6c40a644a7d7885d4c029943861e06113": "ToolLLaMA-2-7b-v2",
-        "0e9e39f249a16976918f6564b8830bc894c89659": "Llama-3.1-8b-Instruct",
-        "d1893ac3ada07430e67e15005c022bcf68a86f0c": "ToolACE-8b",
-    }
-    model_split = os.path.basename(model_path)
-    return model_mapping.get(model_split, model_split)
 
 def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
                    max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
     if not is_api:
-        if not conf.use_chat:
-            print("Initializing LLM (hf batch path)...")
-            llm = LLM(
+        llm = LLM(
                 model=model,
                 tensor_parallel_size=tensor_parallel_size,
                 use_sharegpt_format=False,
                 max_input_tokens=max_model_len,
                 gpu_memory_utilization=gpu_memory_utilization,
                 batch_size=batch_size
-            )
-        else:
-            print("Initializing RoTBenchLLM (vllm batch path)...")
-            llm = RoTBench(
-                model=model,
-                tensor_parallel_size=tensor_parallel_size,
-                use_sharegpt_format=False,
-                max_input_tokens=max_model_len,
-                gpu_memory_utilization=gpu_memory_utilization,
-                batch_size=batch_size
-            )
+        )
     else:
-        print("Initializing API model...")
         llm = LLM(model=model, is_api=is_api)
     return llm
 
-def get_cata_list(answer_file: str) -> List[List[int]]:
-    scenario_mapping = {
-        "TG": "Text_Generation",
-        "RS": "Real_Time_Search",
-        "DU": "Data_Understanding",
-        "PL": "Personal_Life",
-        "AM": "Application_Manipulation",
-        "IR": "Information_Retrieval",
-        "FT": "Financial_Transactions",
-    }
-    categories = {key: [] for key in scenario_mapping.values()}
-    with open(answer_file, encoding="utf-8") as f:
-        data = json.load(f)
-    for index, d in enumerate(data):
-        sce = d.get("scenario")
-        category = scenario_mapping.get(sce)
-        if category:
-            categories[category].append(index)
-    return list(categories.values())
-
-def get_config(data: Dict) -> Dict:
-    value = data["conversations"][0].get("value", "")
-    p_len = value.find("[")
-    config_str = value[p_len:-13] if p_len != -1 else "{}"
-    return json.loads(config_str)
-
-def get_answer_list(data: Dict) -> List[Dict]:
-    return data.get("conversations", [])[-1].get("value", "")
-
-def match_square_bracket(text: str, pos_s: int) -> str:
-    counter = -1
-    for i in range(pos_s + 1, len(text)):
+def match_square_bracket(text, pos_s):
+    counter = -1           
+    for i in range(pos_s+1,len(text)):
         if text[i] == '{':
             counter -= 1
         elif text[i] == '}':
             counter += 1
         if counter == 0:
-            return text[pos_s: i + 1]
+            return text[pos_s: i+1]
     return ""
 
+def get_cata_list(answer_file):
+    Text_Generation = []
+    Real_Time_Search = []
+    Data_Understanding = []
+    Personal_Life = []
+    Application_Manipulation = []
+    Information_Retrieval = []
+    Financial_Transactions = []
+    # Record different scenarios
+    with open(answer_file, encoding="utf-8") as f:
+        data = json.load(f)
+    for index, d in enumerate(data):
+        sce = d["scenario"]
+        if sce == "TG":
+            Text_Generation.append(index)
+            continue
+        if sce == "RS":
+            Real_Time_Search.append(index)
+            continue
+        if sce == "DU":
+            Data_Understanding.append(index)
+            continue
+        if sce == "PL":
+            Personal_Life.append(index)
+            continue
+        if sce == "AM":
+            Application_Manipulation.append(index)
+            continue
+        if sce == "IR":
+            Information_Retrieval.append(index)
+            continue
+        if sce == "FT":
+            Financial_Transactions.append(index)
+            continue
+    cata_list = [Text_Generation, Real_Time_Search, Data_Understanding, Personal_Life, Application_Manipulation, Information_Retrieval, Financial_Transactions]
+    return cata_list
+
+def get_config(data):
+    p_len = len(data["conversations"][0]["value"][:data["conversations"][0]["value"].find("[")])
+    config = json.loads(data["conversations"][0]["value"][p_len:-13])
+    return config
+
+def get_answer_list(data):
+    return data["conversations"][-1]["value"]
+
 def get_raven_resultcall(data, version):
-    result_call = data.get("result", "")
     if version == 1:
+        result_call = data["result"]
         start_str = "Initial Answer: "
         end_str = "\nReflection: "
         start_idx = result_call.find(start_str) + len(start_str)
         end_idx = result_call.find(end_str)
         result_call = result_call[start_idx: end_idx]
-    elif version == 2:
+    if version == 2:
         result_call = data["result"][6:data["result"].find("\nThought:") - 1]
-        if ";" in result_call:
-            result_call = result_call.split(";")[0]
-        if result_call.count("(") != 1:
+        if result_call.find(";") != -1:
+            result_call = result_call[:result_call.find(";")]
+        if result_call.count("(") == 1:
+            pass
+        else:
             end_idx = result_call.find(")")
             start_idx = end_idx
-            for char in reversed(result_call[:end_idx]):
+            func = 0
+            for char in result_call[:end_idx][::-1]:
                 start_idx -= 1
                 if char == "(":
+                    func = 1
+                if char == "=" and func:
                     break
             result_call = result_call[start_idx + 1: end_idx + 1]
     return result_call
 
 def get_raven_action_input(action_input, test_action, config, version):
-    try:
-        if version == 1:
-            if "=" in action_input:
-                action_input = action_input.replace("(", "{").replace(")", "}").replace("=", "':")
-                for idx, char in enumerate(action_input):
-                    if action_input[idx] == "{" and action_input[idx + 1] != "}":
-                        action_input = action_input[:idx + 1] + "'" + action_input[idx + 1:]
-                    if idx > 0 and action_input[:idx + 1].count("'") % 2 == 0:
-                        if (action_input[idx - 1] + action_input[idx] == ", ") and (action_input[idx - 1] + action_input[idx] + action_input[idx + 1] != ", '"):
-                            action_input = action_input[:idx + 1] + "'" + action_input[idx + 1:]
-                    action_input = literal_eval(action_input)
-            else:
-                match = re.search(r'\((.*)\)', action_input)
-                input_list = match.group(1).split(', ') if match else []
-                tools = next((tool for tool in config if tool["name"] == test_action), None)
-                if tools:
-                    paramlist = list(tools["parameters"]["properties"])
-                    action_input = {paramlist[idx]: input for idx, input in enumerate(input_list)}
-                else:
-                    return 0
-        elif version == 2:
+    if version == 1:
+        if action_input.find("=") != -1:
             action_input = action_input.replace("(", "{").replace(")", "}").replace("=", "':")
             for idx, char in enumerate(action_input):
                 if action_input[idx] == "{" and action_input[idx + 1] != "}":
@@ -178,28 +140,63 @@ def get_raven_action_input(action_input, test_action, config, version):
                 if idx > 0 and action_input[:idx + 1].count("'") % 2 == 0:
                     if (action_input[idx - 1] + action_input[idx] == ", ") and (action_input[idx - 1] + action_input[idx] + action_input[idx + 1] != ", '"):
                         action_input = action_input[:idx + 1] + "'" + action_input[idx + 1:]
+            try:
+                action_input = literal_eval(action_input)
+            except SyntaxError:
+                print("SyntaxError")
+                return 0
+        else:
+            match = re.search(r'\((.*)\)', action_input)
+            if match:
+                input_list = [item for item in match.group(1).split(', ')]
+            else:
+                print("MatchError")
+                return 0
+            for tools in config:
+                if (tools["name"]) == test_action:
+                    param_config = tools["parameters"]["properties"]
+                    paramlist = list(param_config)
+                    break
+            action_input = {}
+            try:
+                for idx, input in enumerate(input_list):
+                    action_input[paramlist[idx]] = input
+            except (UnboundLocalError, IndexError):
+                print("UnboundLocalError/IndexError")
+                return 0
+    elif version == 2:
+        action_input = action_input.replace("(", "{").replace(")", "}").replace("=", "':")
+        for idx, char in enumerate(action_input):
+            if action_input[idx] == "{" and action_input[idx + 1] != "}":
+                action_input = action_input[:idx + 1] + "'" + action_input[idx + 1:]
+            if idx > 0 and action_input[:idx + 1].count("'") % 2 == 0:
+                if (action_input[idx - 1] + action_input[idx] == ", ") and (action_input[idx - 1] + action_input[idx] + action_input[idx + 1] != ", '"):
+                    action_input = action_input[:idx + 1] + "'" + action_input[idx + 1:]
+        try:
             action_input = literal_eval(action_input)
-        action_input = {k: v for k, v in action_input.items() if v != ''}
-        return action_input
-    except (SyntaxError, AttributeError, IndexError):
-        print("Error processing action input.")
-        return 0
+        except SyntaxError:
+            print("SyntaxError")
+            return 0
+    for key in list(action_input.keys()):
+        if action_input[key] == '':
+            del action_input[key]
+    return action_input
 
 def get_test_value(data, config, version):
-    if version == 0:
-        test_value = data.get("conversations", [])[-1].get("value", "") if isinstance(data, dict) else ""
-        test_action = test_value.split("Action:")[1].split("Action Input:")[0].strip() if "Action:" in test_value else ""
-        if not test_action:
+    if not version:
+        test_value = data
+        test_action = test_value[test_value.find("Action:") + 8: test_value.find("Action Input:")]
+        if test_action == "":
             return "", 0
-        if test_action.endswith("\n"):
+        if test_action[-1] == "\n":
             test_action = test_action[:-1]
         try:
-            pos = test_value.find("Action Input:") + len("Action Input:")
-            test_action_input_str = match_square_bracket(test_value, pos)
-            test_action_input = json.loads(test_action_input_str)
+            test_action_end_index = match_square_bracket(test_value, test_value.find("Action Input:") + 14)
+            test_action_input = json.loads(test_action_end_index)
         except json.decoder.JSONDecodeError:
             return test_action, 0
-        return test_action, test_action_input if isinstance(test_action_input, dict) else 0
+        if isinstance(test_action_input, str):
+            return test_action, 0
     else:
         test_value = get_raven_resultcall(data, version)
         test_action = test_value[:test_value.find("(")]
@@ -207,81 +204,194 @@ def get_test_value(data, config, version):
         test_action_input = get_raven_action_input(test_action_input, test_action, config, version)
     return test_action, test_action_input
 
-def get_evaluation_indices(test: List[Dict], answer: List[Dict], eval_type: str, version: int = 0) -> List[int]:
-    evaluation_indices = []
-    for i, ans in enumerate(answer):
-        config = get_config(ans)
-        answers = get_answer_list(ans)
-        if not test[i]:
+def delete_input_text(rc_file_path, test):
+    new_test = []
+    with open(rc_file_path, encoding="utf-8") as f:
+        input_test = json.load(f)
+    for i in range(len(input_test)):
+        input_len = len(input_test[i]["content"])
+        new_test.append(test[i][input_len:])
+    return new_test
+
+def ts_eval(test, answer, version=0):
+    global check_list
+    global cata_list
+    global error_cases
+    global error_type_counts
+    tool_selection = []
+    for i in range(len(answer)):
+        config = get_config(answer[i])
+        answers = get_answer_list(answer[i])
+        # delete input text
+        if test[i] == None:
+            continue
+        test_action, test_action_input = get_test_value(test[i], config, version)     
+        if not test_action_input:
+            continue
+        # Check all possible answers
+        right_status = 0
+        for ans in answers:
+            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+            if answer_action[-1] == "\n":
+                answer_action = answer_action[:-1]
+            if answer_action == config[-1]["name"] and test_action == "finish":
+                test_action = answer_action
+            if not answer_action == test_action:
+                continue
+            if right_status < 1:
+                right_status = 1
+                break
+        if right_status >= 1:
+            tool_selection.append(i)
+        else:
+            if i not in error_cases:
+                error_cases[i] = []
+            error_cases[i].append("Tool Selection Error")
+            error_type_counts["Tool Selection Error"] += 1
+    a_list = []
+    a_list.append(len(tool_selection))
+    for cata in cata_list:
+        a_list.append(len(list(set(cata) & set(tool_selection))))
+    check_list.append(a_list)
+
+def pi_eval(test, answer, version=0):
+    global check_list
+    global cata_list
+    parameter_identification = []
+    for i in range(len(answer)):
+        config = get_config(answer[i])
+        answers = get_answer_list(answer[i])
+        if test[i] == None:
             continue
         test_action, test_action_input = get_test_value(test[i], config, version)
         if not test_action_input:
             continue
-        for answer_entry in answers:
-            answer_action = answer_entry.get("Action:", "").strip()
-            if answer_action.endswith("\n"):
+        # Check all possible answers
+        right_status = 0
+        for ans in answers:
+            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+            if answer_action[-1] == "\n":
                 answer_action = answer_action[:-1]
+            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
             if answer_action == config[-1]["name"] and test_action == "finish":
                 test_action = answer_action
-            if answer_action != test_action:
+            if not answer_action == test_action:
                 continue
-            if eval_type == "ts":
-                evaluation_indices.append(i)
+            if right_status < 1:
+                right_status = 1
+            if not answer_action_input.keys() == test_action_input.keys():
+                continue
+            if right_status < 2:
+                right_status = 2
+                # print("<Parameter Identification : Right>")
                 break
-            elif eval_type == "pi":
-                answer_action_input = json.loads(answer_entry.get("Action Input:", "{}"))
-                if set(answer_action_input.keys()) == set(test_action_input.keys()):
-                    evaluation_indices.append(i)
-                    break
-            elif eval_type == "cf":
-                answer_action_input = json.loads(answer_entry.get("Action Input:", "{}"))
-                answer_action = answer_entry.get("Action:", "").strip()
-                if answer_action == config[-1]["name"]:
-                    answer_action = "finish"
-                if answer_action == config[-2]["name"]:
-                    answer_action = "ask_to_user"
-                answer_action_input = {k: v for k, v in answer_action_input.items() if v != "None"}
-                test_action_input = {k: v for k, v in test_action_input.items() if v != ""}
-                if answer_action_input == test_action_input and answer_action not in ["finish", "ask_to_user"]:
-                    evaluation_indices.append(i)
-                    break
-    return evaluation_indices
+        if right_status >= 2:
+            parameter_identification.append(i)
+        else:
+            if i not in error_cases:
+                error_cases[i] = []
+            error_cases[i].append("Parameter Identification Error")
+            error_type_counts["Parameter Identification Error"] += 1 
+    a_list = []
+    a_list.append(len(parameter_identification))
+    for cata in cata_list:
+        a_list.append(len(list(set(cata) & set(parameter_identification))))
+    check_list.append(a_list)
 
-def general_eval(test_data: List[Dict], answer_data: List[Dict], check_list: List[List[int]], cata_list, version: int = 0):
-    eval_types = ["ts", "pi", "cf"]
-    for idx, eval_type in enumerate(eval_types):
-        indices = get_evaluation_indices(test_data, answer_data, eval_type, version)
-        a_list = [len(indices)]
-        for cata in cata_list:
-            a_list.append(len(set(cata) & set(indices)))
-        check_list[idx].extend(a_list)
+def cf_eval(test, answer, version=0):
+    global check_list
+    
+    content_filling = []
+    for i in range(len(answer)):
+        config = get_config(answer[i])
+        answers = get_answer_list(answer[i])
+        if test[i] == None:
+            continue
+        test_action, test_action_input = get_test_value(test[i], config, version)
+        if not test_action_input:
+            continue
+        # Check all possible answers
+        right_status = 0
+        for ans in answers:
+            answer_action = ans[ans.find("Action:") + 8: ans.find("Action Input:")]
+            if answer_action[-1] == "\n":
+                answer_action = answer_action[:-1]
+            answer_action_input = json.loads(ans[ans.find("Action Input:") + 14:])
+            if answer_action == config[-1]["name"] and test_action == "finish":
+                test_action = answer_action
+            if not answer_action == test_action:
+                continue
+            if right_status < 1:
+                right_status = 1
+            if not answer_action_input.keys() == test_action_input.keys():
+                continue
+            if right_status < 2:
+                right_status = 2
+            if answer_action == config[-1]["name"]:
+                answer_action = "finish"
+            if answer_action == config[-2]["name"]:
+                answer_action = "ask_to_user"
+            del_key = []
+            for key, value in answer_action_input.items():
+                if value == "None":
+                    del_key.append(key)
+            for key in del_key:
+                del answer_action_input[key]
+                del test_action_input[key]
+            if not answer_action_input == test_action_input and answer_action != "finish" and answer_action != "ask_to_user":
+                continue
+            if right_status < 3:
+                right_status = 3
+                # print("<Content Filling : Right>")
+                break
+        if right_status >= 3:
+            content_filling.append(i)
+        else:
+            if i not in error_cases:
+                error_cases[i] = []
+            error_cases[i].append("Content Filling Error")
+            error_type_counts["Content Filling Error"] += 1  # 修改
+    a_list = []
+    a_list.append(len(content_filling))
+    for cata in cata_list:
+        a_list.append(len(list(set(cata) & set(content_filling))))
+    check_list.append(a_list)
 
-def show_stats(check_list: List[List[int]], max_len: int):
+def general_eval(test_data, answer_data):
+    ts_eval(test_data, answer_data)
+    pi_eval(test_data, answer_data)
+    cf_eval(test_data, answer_data)
+
+def raven_eval(test_data, answer_data, version):
+    ts_eval(test_data, answer_data, version)
+    pi_eval(test_data, answer_data, version)
+    cf_eval(test_data, answer_data, version)
+
+def show_stats(check_list, max_len):
+    print("*"*60)
     print("Overall:")
-    metrics = ["Tool Selection", "Parameter Identification", "Content Filling"]
-    for idx, metric in enumerate(metrics):
-        percentage = (check_list[idx][0] / max_len) * 100
-        print(f"{metric}: {percentage:.2f}%")
+    print("Tool Selection: " + "{:.2f}".format(check_list[0][0] / max_len * 100))
+    print("Parameter Identification: " + "{:.2f}".format(check_list[1][0] / max_len * 100))
+    print("Content Filling: " + "{:.2f}".format(check_list[2][0] / max_len * 100))
     print(check_list)
-    # All Scenarios
-    scenarios = ["Text Generation", "Real-Time Search", "Data Understanding", 
-                 "Personal Life", "Application Manipulation", "Information Retrieval", "Financial Transactions"]
-    for id, sce in enumerate(scenarios):
-        print(f"-----Acc_{sce}-----")
-        div = max_len / 7
-        for idx, metric in enumerate(metrics):
-            percentage = (check_list[idx][id + 1] / div) * 100
-            print(f"{metric}: {percentage:.2f}%")
+
+cata_list = None
+check_list = None
+error_cases = {}
+error_type_counts = {
+    "Tool Selection Error": 0,
+    "Parameter Identification Error": 0,
+    "Content Filling Error": 0
+}
 
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/songzijun/huggingface/llama3.1_8b_instruct")
-@click.option("--datasets", type=list, default=["clean", "slight", "medium", "heavy", "union"])
-# @click.option("--datasets", type=list, default=["medium"])
+@click.option("--datasets", type=list, default=["clean", "heavy", "medium", "slight", "union"])
 @click.option("--is_api", type=bool, default=False)
-@click.option("--tensor_parallel_size", type=int, default=2)
+@click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=16)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
-@click.option("--max_model_len", type=int, default=4096)
+@click.option("--max_model_len", type=int, default=8192)
 def main(
     model: str, 
     datasets: list,
@@ -292,31 +402,40 @@ def main(
     gpu_memory_utilization: float,
     ):
     ### Setup
-    model_name = parse_model_name(model)
+    print("Begin to run RotBench")
+    model_name = os.path.basename(model)
     llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
     for dataset in datasets:
-        if not conf.use_chat: # hf batch generate
-            raw_data_path = f"../../src/data/input_data/RoTBench/First_turn_RC/{dataset}.json"
-        else:
-            raw_data_path = f"../../src/data/input_data/RoTBench/First_turn/{dataset}.json"
+        raw_data_path = f"../../src/data/input_data/RoTBench/First_turn/{dataset}.json"
         print(f"Loading data from {raw_data_path}")
         with open(raw_data_path, "r", encoding='utf-8') as f:
             eval_data = json.load(f)
-        
+        print(len(eval_data))
+        global cata_list
+        global check_list 
+        global error_cases
+        global error_type_counts
         cata_list = get_cata_list(raw_data_path)
-        check_list = [[] for _ in range(3)]  # [ts, pi, cf]
+        check_list = [] 
+
+        error_cases = {}
+        error_type_counts = {
+            "Tool Selection Error": 0,
+            "Parameter Identification Error": 0,
+            "Content Filling Error": 0
+        }
 
         ### Run inference
         if not conf.use_chat:
-            output_path = f"benchmark_results/{model_name}/hf_{model_name}_rotbench_{dataset}_results.json"
+            output_path = f"benchmark_results/rotbench/{model_name}/hf_{model_name}_rotbench_{dataset}_results.json"
         else:
             if is_api:
-                output_path = f"benchmark_results/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
+                output_path = f"benchmark_results/rotbench/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
             else: 
-                output_path = f"benchmark_results/{model_name}/vllm_{model_name}_rotbench_{dataset}_results.json"
-        if not os.path.exists(f"benchmark_results/{model_name}"):
-            os.makedirs(f"benchmark_results/{model_name}")
+                output_path = f"benchmark_results/rotbench/{model_name}/vllm_{model_name}_rotbench_{dataset}_results.json"
+        if not os.path.exists(f"benchmark_results/rotbench/{model_name}"):
+            os.makedirs(f"benchmark_results/rotbench/{model_name}")
         print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
         def run_inference() -> List:
@@ -326,15 +445,16 @@ def main(
             else: # if not 
                 if not conf.use_chat: # hf batch generate
                     results = llm.batch_generate_complete(
-                        [ed["content"] for ed in eval_data],
+                        [(ed["conversations"][0]["value"] + ed["conversations"][1]["value"]) for ed in eval_data],
                         temperature=0
                     )
                 else:  # vllm batch generate
-                    messages = llm._create_messages(eval_data)
+                    messages = create_messages(eval_data)
                     if not is_api:
                         with llm.start_server():
                             results = llm.batch_generate_chat(messages)
                     else:
+                        print("You are using batch_generate_chat to execute inference")
                         results = llm.batch_generate_chat(messages)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
@@ -343,11 +463,37 @@ def main(
         results = run_inference()
 
         ### Evaluation
-        # with open(output_path, encoding="utf-8") as f:
-        #     test_data = json.load(f)
-        # max_len = len(test_data)
-        # general_eval(test_data, eval_data, check_list, cata_list)
-        # show_stats(check_list, max_len)
+        with open(output_path, encoding="utf-8") as f:
+            test_data = json.load(f)
+        max_len = len(test_data)
+        general_eval(test_data, eval_data)
+        show_stats(check_list, max_len)
+
+        print("Error Type Statistics: ")
+        for error_type, count in error_type_counts.items():
+            print(f"{error_type}: {count}")
+
+        error_type_count_path = f"benchmark_results/rotbench/{model_name}/error_type_counts_{dataset}.json"
+        with open(error_type_count_path, "w", encoding="utf-8") as f:
+            json.dump(error_type_counts, f, ensure_ascii=False, indent=4)
+        print(f"Error type statistics have been saved to {error_type_count_path}.")
+
+        bad_cases = []
+        for idx, errors in error_cases.items():
+            bad_case = {
+                "index": idx,
+                "scenario": eval_data[idx]["scenario"],
+                "test_data": test_data[idx],
+                "answer_data": eval_data[idx],
+                "errors": errors
+            }
+            bad_cases.append(bad_case)
+        
+        bad_cases_path = f"benchmark_results/rotbench/{model_name}/bad_cases_{dataset}.jsonl"
+        with open(bad_cases_path, "w", encoding="utf-8") as f:
+            for case in bad_cases:
+                f.write(json.dumps(case, ensure_ascii=False) + "\n")
+        print(f"The error cases have been saved to {bad_cases_path}.")
 
 if __name__ == "__main__":
     main()
