@@ -100,6 +100,11 @@ Set Up the Environment
 conda create -n teval python=3.10 && conda activate teval
 bash teval_setup.sh
 ```
+Move the files related to teval to the folder `T-Eval`
+```
+mv T-Eval_evaluation/* T-Eval/
+```
+
 To evaluate with closed-resource models
 ```bash
 sh teval-eval.sh api model_name display_name
