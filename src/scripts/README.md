@@ -44,6 +44,8 @@ The scores and the original inference results along with bad cases will be saved
 ### TaskBench Evaluation
 In TaskBench, **ROUGE-1** examines whether the model can correctly capture and generate individual word matches, reflecting the surface-level accuracy of task decomposition, while **ROUGE-2** extends this by evaluating adjacent word pair matches to provide a more precise assessment of task structuring. **Node F1** assesses the model’s accuracy in selecting the appropriate tool for each subtask, and **Edge F1** evaluates its understanding of dependencies between tools, ensuring correct connections in complex workflows. **Parameter Name F1** measures whether the model correctly identifies required parameters, whereas **Parameter Name & Value F1** further ensures that, in addition to recognizing parameters, the model assigns the correct values, thereby validating the completeness and accuracy of tool configuration.
 
+Unzip `src/data/sft_data/Taskbench_data` to get the data.
+
 To evaluate with open-source models:
 ```
 cd src/scripts
