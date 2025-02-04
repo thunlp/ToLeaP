@@ -5,6 +5,8 @@
 - For **vllm batch inference**, configure the `port`, `host`, and `use_chat` values.
 - For **API models**, set the `port`, `host`, `use_chat`, `api_key`, and `api_base` values.
 
+To perform one-click evaluation, simply run `bash one-click-evaluation.sh /path/to/your/model` in the BFCL environment. If you prefer to evaluate separately, follow the steps below.
+
 ### RoTBench Evaluation
 RoTBench uses three metrics to evaluate function calling: 
 - **Tool Selection (TS)**: Assesses whether the agent selects the correct function.
