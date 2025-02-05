@@ -102,6 +102,7 @@ bash teval_setup.sh
 Move the files related to teval to the folder `T-Eval`
 ```
 mv T-Eval_evaluation/* T-Eval/
+cd T-Eval
 ```
 
 To evaluate with closed-resource models
