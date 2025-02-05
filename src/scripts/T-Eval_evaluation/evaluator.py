@@ -906,13 +906,19 @@ class ReasonRetrieveUnderstandEvaluator:
             
             # 收集thought数据用于batch计算
             if 'thought' in data.pred and 'thought' in data.gt:
-                batch_data.extend([data.pred['thought'], data.gt['thought']])
-                batch_id.append(idx)
+                if data.pred['thought'] is None or data.gt['thought'] is None:
+                    curr_metrics['thought'] = 0  # 如果是None就直接给0分
+                else:
+                    batch_data.extend([data.pred['thought'], data.gt['thought']])
+                    batch_id.append(idx)
             
             # 计算name
             if 'name' in data.pred and 'name' in data.gt:
                 if self.default_prompt_type == 'json':
-                    curr_metrics['name'] = 1 if data.pred['name'] == data.gt['name'] else 0
+                    if data.pred['name'] is None:
+                        curr_metrics['name'] = 0
+                    else:
+                        curr_metrics['name'] = 1 if data.pred['name'] == data.gt['name'] else 0
                 else:
                     if data.pred['name'] is None:
                         curr_metrics['name'] = 0
@@ -958,8 +964,11 @@ class ReasonRetrieveUnderstandEvaluator:
                     if self.default_prompt_type == 'json':
                         curr_metrics['args'] = curr_metrics['args_f1_score']
                 else:
-                    data.pred['args'] = data.pred['args'].strip("'").strip('"')
-                    curr_metrics['args'] = float(data.gt['args'] == data.pred['args'])
+                    if data.pred['args'] is None:
+                        curr_metrics['args'] = 0
+                    else:
+                        data.pred['args'] = data.pred['args'].strip("'").strip('"')
+                        curr_metrics['args'] = float(data.gt['args'] == data.pred['args'])
                 
             metrics_results.append(curr_metrics)
         
@@ -967,7 +976,7 @@ class ReasonRetrieveUnderstandEvaluator:
         if len(batch_data) > 0:
             pred_emb = self.sentence_model.encode(batch_data, convert_to_tensor=True)
             for i in range(0, len(batch_data), 2):
-                cosine_score = float(np.maximum(util.cos_sim(pred_emb[i], pred_emb[i+1]).cpu().numpy(), 0)[0, 0])  # 转换为Python float
+                cosine_score = float(np.maximum(util.cos_sim(pred_emb[i], pred_emb[i+1]).cpu().numpy(), 0)[0, 0])
                 metrics_results[batch_id[i // 2]]['thought'] = cosine_score
             
         # 收集badcases
@@ -1038,21 +1047,27 @@ class ReasonRetrieveUnderstandEvaluator:
             if len(data.pred.keys()) != 0:
                 metrics_results[id]['parse_rate'] = 1
             if 'thought' in data.pred and 'thought' in data.gt:
-                batch_data.extend([data.pred['thought'], data.gt['thought']])
-                batch_id.extend([id])
-                if len(batch_data) >= BATCH_LIMIT:
-                    pred_emb = self.sentence_model.encode(batch_data, convert_to_tensor=True)
-                    for i in range(0, len(batch_data), 2):
-                        cosine_score = np.maximum(util.cos_sim(pred_emb[i], pred_emb[i+1]).cpu().numpy(), 0)
-                        metrics_results[batch_id[i // 2]]['thought'] = cosine_score[0, 0]
-                    batch_data = []
-                    batch_id = []
+                if data.pred['thought'] is None or data.gt['thought'] is None:
+                    metrics_results[id]['thought'] = 0  # 如果是None就直接给0分
+                else:
+                    batch_data.extend([data.pred['thought'], data.gt['thought']])
+                    batch_id.extend([id])
+                    if len(batch_data) >= BATCH_LIMIT:
+                        pred_emb = self.sentence_model.encode(batch_data, convert_to_tensor=True)
+                        for i in range(0, len(batch_data), 2):
+                            cosine_score = np.maximum(util.cos_sim(pred_emb[i], pred_emb[i+1]).cpu().numpy(), 0)
+                            metrics_results[batch_id[i // 2]]['thought'] = cosine_score[0, 0]
+                        batch_data = []
+                        batch_id = []
             if 'name' in data.pred and 'name' in data.gt:
                 if self.default_prompt_type == 'json':
-                    if data.pred['name'] == data.gt['name']:
-                        metrics_results[id]['name'] = 1
-                    else:
+                    if data.pred['name'] is None:
                         metrics_results[id]['name'] = 0
+                    else:
+                        if data.pred['name'] == data.gt['name']:
+                            metrics_results[id]['name'] = 1
+                        else:
+                            metrics_results[id]['name'] = 0
                 else:
                     if data.pred['name'] is None:
                         metrics_results[id]['name'] = 0
@@ -1077,8 +1092,11 @@ class ReasonRetrieveUnderstandEvaluator:
                     if len(data.gt['args']) == 0 and len(data.pred['args']) != 0:
                         metrics_results[id]['args'] = 0
                 else:
-                    data.pred['args'] = data.pred['args'].strip("'").strip('"')
-                    metrics_results[id]['args'] = float(data.gt['args'] == data.pred['args'])
+                    if data.pred['args'] is None:
+                        metrics_results[id]['args'] = 0
+                    else:
+                        data.pred['args'] = data.pred['args'].strip("'").strip('"')
+                        metrics_results[id]['args'] = float(data.gt['args'] == data.pred['args'])
                 
         if len(batch_data) > 0:
             pred_emb = self.sentence_model.encode(batch_data, convert_to_tensor=True)
