@@ -97,6 +97,7 @@ T-Eval uses accuracy as the primary evaluation metric, measuring the model’s *
 Set Up the Environment
 ```bash
 conda create -n teval python=3.10 -y && conda activate teval
+unzip teval_data
 bash teval_setup.sh
 ```
 Move the files related to teval to the folder `T-Eval`
