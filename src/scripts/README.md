@@ -107,9 +107,9 @@ cd T-Eval
 
 To evaluate with closed-resource models
 ```bash
-sh teval-eval.sh api model_name display_name
+sh test_all_teval.sh api model_name display_name
 # Example:
-sh teval-eval.sh api gpt-3.5-turbo-0125 gpt3.5-turbo
+sh test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620
 ```
 
 To evaluate with open-resource models
