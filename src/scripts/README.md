@@ -72,7 +72,7 @@ conda create -n BFCL python=3.10 -y && conda activate BFCL
 bash bfcl_setup.sh
 ```
 
-For locally downloaded models, you need to add the corresponding processor in the handler mapping file `gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 108 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`.
+For locally downloaded models, you need to add the corresponding processor in the handler mapping file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 108 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`. If you want to run the program in parallel, you can Modify the port in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/constant.py`
 
 To evaluate with closed-resource models
 
