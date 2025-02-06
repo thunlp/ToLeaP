@@ -68,41 +68,6 @@ class GPTModel(BaseModel):
         )
         return completion.choices[0].message.content
     
-import together   
-class TogetherAIModel(BaseModel): 
-    def __init__(self, params):
-        super().__init__()  
-        
-        from .prompts.prompt_template import PROMPT_TEMPLATE
-        
-        self.params = params
-        self.model = self.params['model_name']
-        self.prompt = PROMPT_TEMPLATE[self.model]
-
-    def prepare_input(self, sys_prompt, user_prompt_filled):
-        model_input = self.prompt.format(sys_prompt = sys_prompt, user_prompt = user_prompt_filled)
-        return model_input
-    
-    def call_model(self, model_input, retries=3, delay=2, max_tokens =512):
-        attempt = 0
-        while attempt < retries:
-            try:
-                completion = together.Complete.create(
-                    model=self.model,
-                    prompt=model_input,
-                    max_tokens=max_tokens,
-                    temperature=0
-                )
-                return completion['choices'][0]['text']
-            except Exception as e:
-                attempt += 1
-                max_tokens = max_tokens // 2
-                print(f"Attempt {attempt}: An error occurred - {e}")
-                if attempt < retries:
-                    time.sleep(delay)  # Wait for a few seconds before retrying
-                else:
-                    return ""
-    
 class OpenModel(LLM):     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
