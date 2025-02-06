@@ -265,3 +265,15 @@ class LLM:
             for output in outputs:
                 all_outputs.append(output.outputs[0].text)
         return all_outputs
+    def single_generate_complete(
+        self, 
+        test_case: str, 
+        temperature: float = 0,
+    ) -> str:
+        gen_params = SamplingParams(
+            temperature=temperature, 
+            max_tokens=self.max_output_tokens,
+        )
+        output = self.model.generate([test_case], gen_params, use_tqdm=False)
+        # print(output[0].outputs[0].text)
+        return output[0].outputs[0].text
