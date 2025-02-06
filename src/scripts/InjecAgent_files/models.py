@@ -110,6 +110,5 @@ MODELS = {
     "Claude": ClaudeModel,
     "GPT": GPTModel,
     "Llama": LlamaModel,
-    "TogetherAI": TogetherAIModel,
     "OpenModel": OpenModel
 }   
