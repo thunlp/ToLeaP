@@ -11,7 +11,17 @@ To perform one-click evaluation, you need to configure a unified environment acc
 ```
 cd src/scripts
 conda create -n benchmark python=3.10 -y && conda activate benchmark
-
+bash bfcl_setup.sh
+# taskbench
+pip install rouge_score
+# teval
+bash teval_setup.sh
+# You may meet confliction when installing packages...
+pip install pydantic==2.8.2
+# You may still meet confliction, but it's not a problem...
+# injecagent
+pip install nltk 
+pip install accelerate==0.26.0
 ```
 
 ### RoTBench Evaluation
