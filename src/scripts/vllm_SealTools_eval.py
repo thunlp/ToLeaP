@@ -255,6 +255,24 @@ def transform_output_format(dataset_name, output_text):
             except:
                 return -1     
 
+        # case 'ToolLearning':
+             
+        #     def match_square_bracket(text, pos_s):
+        #         counter = -1
+        #         for i in range(pos_s+1,len(text)):
+        #             if text[i] == '[':
+        #                 counter -= 1
+        #             elif text[i] == ']':
+        #                 counter += 1
+        #             if counter == 0:
+        #                 return i
+        #         return -1
+            
+            # format_index = output_text.find("[{\"api\":")  
+            # if format_index == -1:
+            #     return -1
+            # else:
+            #     output_text = output_text[format_index:]
         case 'ToolLearning':
             def match_square_bracket(text, pos_s):
                 counter = -1
@@ -266,6 +284,7 @@ def transform_output_format(dataset_name, output_text):
                     if counter == 0:
                         return i
                 return -1
+                
             text = re.sub("'", '"', output_text)
             text = re.sub("\n", "", text)
             pattern = re.compile("\[\s*\{\s*\"api\"", re.DOTALL)
@@ -277,20 +296,22 @@ def transform_output_format(dataset_name, output_text):
                 pos_e = match_square_bracket(text, pos_s)
 
                 text = text[pos_s:pos_e+1]
-                if "api" in text and "parameters" in text and "responses" in text:
-                    try:
-                        output = json.loads(text)
-                        return output
-                    except:
+                # if "api" in text and "parameters" in text and "responses" in text:
+                if "api" in text and "response" in text:
+                    if "parameters" in text or "arguments" in text:
+                        try:
+                            output = json.loads(text)
+                            return output
+                        except:
+                            return -1
+                    else:
                         return -1
                 else:
                     return -1
             else:
                 return -1  
-
         case _:
             print("ERROR!")
-
 def write_jsonl(data_path, dataset):
     with open(data_path,'w', encoding='UTF-8') as f:
         for data in dataset:
@@ -332,6 +353,15 @@ def calculate_score_ToolLearning(data_path):
     predict_param_num = 0
     gold_param_num = 0
 
+    error_cases = []
+    error_type_counts = {
+        "格式错误": 0,
+        "缺失 API": 0,
+        "错误的 API": 0,
+        "缺失参数": 0,
+        "错误的参数值": 0
+    }
+
     for data in raw_dataset:
         gold_answer = json.loads(json.dumps(eval(data['gold_data']["conversations"][1]["value"])))
 
@@ -341,12 +371,15 @@ def calculate_score_ToolLearning(data_path):
 
         if data['predict'][0] != -1:
             predict_answer = data['predict'][0]
+            data_correct = True
             correct_format_num += 1
             for predict_api in predict_answer:
                 if "api" in predict_api:
                     predict_api_num += 1
                     if "parameters" in predict_api and type(predict_api["parameters"])==dict:
                         predict_param_num += len(predict_api["parameters"])
+                    if "arguments" in predict_api and type(predict_api["arguments"])==dict:
+                        predict_param_num += len(predict_api["arguments"])
                     gold_idx = -1
                     for idx in range(len(gold_answer)):
                         if gold_answer[idx]["api"] == predict_api["api"]:
@@ -354,63 +387,83 @@ def calculate_score_ToolLearning(data_path):
                             break
                     if gold_idx != -1:
                         correct_api_num += 1
+                        params_correct = True
+                        if "arguments" in predict_api and type(predict_api["arguments"])==dict:
+                            for parameter_name in predict_api["arguments"]:
+                                if parameter_name in gold_answer[gold_idx]["parameters"] and str(predict_api["arguments"][parameter_name]) == str(gold_answer[gold_idx]["parameters"][parameter_name]):
+                                    correct_param_num += 1
+                                else:
+                                    params_correct = False
+                                    if parameter_name not in gold_answer[gold_idx]["parameters"]:
+                                        error_type_counts["缺失参数"] += 1
+                                    else:
+                                        error_type_counts["错误的参数值"] += 1
                         if "parameters" in predict_api and type(predict_api["parameters"])==dict:
                             for parameter_name in predict_api["parameters"]:
-                                if parameter_name in gold_answer[gold_idx]["parameters"] and str(predict_api["parameters"][parameter_name])==str(gold_answer[gold_idx]["parameters"][parameter_name]):
+                                if parameter_name in gold_answer[gold_idx]["parameters"] and str(predict_api["parameters"][parameter_name]) == str(gold_answer[gold_idx]["parameters"][parameter_name]):
                                     correct_param_num += 1
+                                else:
+                                    params_correct = False
+                                    if parameter_name not in gold_answer[gold_idx]["parameters"]:
+                                        error_type_counts["缺失参数"] += 1
+                                    else:
+                                        error_type_counts["错误的参数值"] += 1
+                        if not params_correct:
+                            data_correct = False
+                    else:
+                        data_correct = False
+                        error_type_counts["错误的 API"] += 1
+                else:
+                    data_correct = False
+                    error_type_counts["缺失 API"] += 1
+            if not data_correct:
+                error_cases.append(data)
+        else:
+            error_cases.append(data)
+            error_type_counts["格式错误"] += 1
+
     if correct_format_num > 0:
-        result_dict["AMOUNT"] = round(100.0 * correct_format_num / len(raw_dataset), 2)
+        result_dict["AMOUNT"] = 1.0 * correct_format_num / len(raw_dataset)
 
     if correct_api_num * predict_api_num * gold_api_num > 0:
-        result_dict["P_api"] = round(100.0 * correct_api_num / predict_api_num, 2)
-        result_dict["R_api"] = round(100.0 * correct_api_num / gold_api_num, 2)
-        if (result_dict["P_api"] + result_dict["R_api"]) > 0:
-            result_dict["F1_api"] = round(
-                2 * result_dict["P_api"] * result_dict["R_api"] / (result_dict["P_api"] + result_dict["R_api"]),
-                2
-            )
-        else:
-            result_dict["F1_api"] = 0.00  # 避免除以零的情况
-
+        result_dict["P_api"] = 1.0 * correct_api_num / predict_api_num
+        result_dict["R_api"] = 1.0 * correct_api_num / gold_api_num
+        result_dict["F1_api"] = 2 * result_dict["P_api"] * result_dict["R_api"] / (result_dict["P_api"] + result_dict["R_api"])
+    
     if correct_param_num * predict_param_num * gold_param_num > 0:
-        result_dict["P_param"] = round(100.0 * correct_param_num / predict_param_num, 2)
-        result_dict["R_param"] = round(100.0 * correct_param_num / gold_param_num, 2)
-        if (result_dict["P_param"] + result_dict["R_param"]) > 0:
-            result_dict["F1_param"] = round(
-                2 * result_dict["P_param"] * result_dict["R_param"] / (result_dict["P_param"] + result_dict["R_param"]),
-                2
-            )
-        else:
-            result_dict["F1_param"] = 0.00  # 避免除以零的情况
+        result_dict["P_param"] = 1.0 * correct_param_num / predict_param_num
+        result_dict["R_param"] = 1.0 * correct_param_num / gold_param_num
+        result_dict["F1_param"] = 2 * result_dict["P_param"] * result_dict["R_param"] / (result_dict["P_param"] + result_dict["R_param"])
 
-    return result_dict
+    result_dict["错误类型统计"] = error_type_counts
 
+    return result_dict, error_cases
 
 def raw_to_pred(raw_data_path, label_data_path):
     raw_dataset = read_json(raw_data_path)
     label_dataset = read_json(label_data_path)
     pred_list = []
-    for raw_data,label_data in zip(raw_dataset,label_dataset ):
+    for raw_data,label_data in zip(raw_dataset,label_dataset):
         pred_output = {
                         'id':label_data["id"],
                         'predict':[],
                         'gold_data':label_data,
                     }
-        input_len = len(label_data["conversations"][0]["value"])
-        output_text = raw_data[input_len:]
-        pred_text = transform_output_format("ToolLearning", raw_data)
+        output_text = raw_data[:]
+        pred_text = transform_output_format("ToolLearning", output_text)
         pred_output['predict'].append(pred_text)
         pred_list.append(pred_output)
     return pred_list
 
 if __name__ == "__main__":
     pred_folder_path = "src/data/pred_data/Seal-Tools"
-    model_name = "llama2-7b-chat-hf"
+    model_name = "20250108afm20000"
     os.makedirs('src/data/eval_result/Seal-Tools/' + model_name + '/', exist_ok=True)
     os.makedirs('src/data/pred_data/Seal-Tools/' + model_name + '/', exist_ok=True)
     output_dir = "src/data/eval_result/Seal-Tools/" + model_name
-    output_dir = "src/data/eval_result/Seal-Tools/" + model_name
-    dataset_name_list = ["dev", 
+    # output_dir = "src/data/eval_result/Seal-Tools/" + model_name
+    dataset_name_list = [
+                         "dev", 
                         #  "test_in_domain", 
                         #  "test_out_domain",
                          ]
