@@ -7,6 +7,13 @@
 
 To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run `python one-click-evaluation.py /path/to/your/model`(It is not yet complete, but you can use `bash one-click-evaluation.sh model_path` for partial evaluation.). All evaluation results will be returned in JSON format. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
 
+#### Set up the unified environment
+```
+cd src/scripts
+conda create -n benchmark python=3.10 -y && conda activate benchmark
+
+```
+
 ### RoTBench Evaluation
 RoTBench uses three metrics to evaluate function calling: 
 - **Tool Selection (TS)**: Assesses whether the agent selects the correct function.
