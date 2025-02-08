@@ -23,88 +23,104 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 
 @click.command()
 @click.option("--model", type=str, default="meta-llama/Llama-2-7b-chat-hf")
-@click.option("--data_path", type=str, default="../data/sft_data/taskbench_data_dailylifeapis.json")
+@click.option("--data_paths", type=list, default=[
+    "../data/sft_data/TaskBench/taskbench_data_dailylifeapis.json",
+    "../data/sft_data/TaskBench/taskbench_data_huggingface.json",
+    "../data/sft_data/TaskBench/taskbench_data_multimedia.json",
+])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--host", type=str, default="localhost")
 @click.option("--port", type=int, default=13427)
 @click.option("--tensor_parallel_size", type=int, default=4)
 @click.option("--batch_size", type=int, default=16)
-def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
-    # Initialize
-    data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-    tool_path = "../data/sft_data/TaskBench/"
-    tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
-    tool_desc = json.load(open(tool_desc_file, "r"))
-    eval_data = json.load(open(data_path, "r"))
-    labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
+def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
+    data_results = {}
+    for data_path in data_paths:
+        # Initialize
+        data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
+        tool_path = "../data/sft_data/TaskBench/"
+        tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
+        tool_desc = json.load(open(tool_desc_file, "r"))
+        eval_data = json.load(open(data_path, "r"))
+        labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
 
-    if not is_api:
-        llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
-    else:
-        llm = LLM(model=model)
-
-    # Run inference
-    output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
-    parsed_output_path = f"{model.split('/')[-1]}_{data_split}_parsed_results.json"
-
-    def run_inference():
-        if os.path.exists(output_path):
-            results = json.load(open(output_path, "r"))
+        if not is_api:
+            llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
         else:
-            if is_api:
-                pass
-                messages = create_messages(eval_data)
-                results = llm.batch_generate_chat(messages)
+            llm = LLM(model=model)
+
+        # Run inference
+        output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
+        parsed_output_path = f"{model.split('/')[-1]}_{data_split}_parsed_results.json"
+
+        def run_inference():
+            if os.path.exists(output_path):
+                results = json.load(open(output_path, "r"))
             else:
-                results = llm.batch_generate_complete(
-                    [d["conversations"][0]["value"] for d in eval_data]
-                )
-            json.dump(results, open(output_path, "w"), indent=4)
-        return results
+                if is_api:
+                    pass
+                    messages = create_messages(eval_data)
+                    results = llm.batch_generate_chat(messages)
+                else:
+                    results = llm.batch_generate_complete(
+                        [d["conversations"][0]["value"] for d in eval_data]
+                    )
+                json.dump(results, open(output_path, "w"), indent=4)
+            return results
 
-    if not os.path.exists(parsed_output_path):
-        results = run_inference()
-    else:
-        results = json.load(open(output_path, "r"))
+        if not os.path.exists(parsed_output_path):
+            results = run_inference()
+        else:
+            results = json.load(open(output_path, "r"))
 
-    parsed_results = []
-    bad_cases = []
-    for result in results:
-        try:
-            parsed_json = json.loads(extract_first_json(result))
-            # Initialize with empty lists
-            normalized_json = {
-                "task_steps": [],
-                "task_nodes": [],
-                "task_links": []
-            }
-            
-            # Try to get each field individually
+        parsed_results = []
+        bad_cases = []
+        for result in results:
             try:
-                normalized_json["task_steps"] = parsed_json.get("task_steps", [])
-            except:
-                pass
+                parsed_json = json.loads(extract_first_json(result))
+                # Initialize with empty lists
+                normalized_json = {
+                    "task_steps": [],
+                    "task_nodes": [],
+                    "task_links": []
+                }
                 
-            try:
-                normalized_json["task_nodes"] = parsed_json.get("task_nodes", [])
-            except:
-                pass
-                
-            try:
-                normalized_json["task_links"] = parsed_json.get("task_links", [])
-            except:
-                pass
-                
-            parsed_results.append(normalized_json)
-        except Exception as e:
-            bad_cases.append(result)
-            parsed_results.append({"task_steps": [], "task_nodes": [], "task_links": []})
+                # Try to get each field individually
+                try:
+                    normalized_json["task_steps"] = parsed_json.get("task_steps", [])
+                except:
+                    pass
+                    
+                try:
+                    normalized_json["task_nodes"] = parsed_json.get("task_nodes", [])
+                except:
+                    pass
+                    
+                try:
+                    normalized_json["task_links"] = parsed_json.get("task_links", [])
+                except:
+                    pass
+                    
+                parsed_results.append(normalized_json)
+            except Exception as e:
+                bad_cases.append(result)
+                parsed_results.append({"task_steps": [], "task_nodes": [], "task_links": []})
 
-    print("Bad Cases are those that cannot be parsed as JSON or has none of the required fields.")
-    print(f"Total bad cases: {len(bad_cases)}/{len(results)}")
-    json.dump(bad_cases, open(f"{model.split('/')[-1]}_{data_split}_bad_cases.json", "w"), indent=4)
+        # print("Bad Cases are those that cannot be parsed as JSON or has none of the required fields.")
+        # print(f"Total bad cases: {len(bad_cases)}/{len(results)}")
+        json.dump(bad_cases, open(f"{model.split('/')[-1]}_{data_split}_bad_cases.json", "w"), indent=4)
 
-    evaluate(parsed_results, labels, data_split, tool_desc)
+        rouge_1, rouge_2, name_f1, t_f1, v_f1, link_f1 = evaluate(parsed_results, labels, data_split, tool_desc)
+        data_results[f"{data_split}"] = {
+                "rouge_1": rouge_1,
+                "rouge_2": rouge_2,
+                "name_f1": name_f1,
+                "t_f1": t_f1,
+                "v_f1": v_f1,
+                "link_f1": link_f1
+        }
+    print(data_results)
+    
 
 def get_content_type(content):
     content = content.strip('\'')
@@ -283,8 +299,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
         rouge_scores[1] += rouge.score(pred, label)['rouge2'].fmeasure
     rouge_scores[0] /= len(pred_tasksteps)
     rouge_scores[1] /= len(pred_tasksteps)
-    print("Rouge 1", rouge_scores[0])
-    print("Rouge 2", rouge_scores[1])
+    # print("Rouge 1", rouge_scores[0])
+    # print("Rouge 2", rouge_scores[1])
 
     # F1 for task nodes
     name_f1 = 0
@@ -300,7 +316,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         name_f1 += f1
     name_f1 /= len(pred_node_names)
-    print("Name_F1", name_f1)
+    # print("Name_F1", name_f1)
 
     # F1 for task args
     t_f1 = 0
@@ -317,7 +333,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         t_f1 += f1
     t_f1 /= len(pred_taskargnames)
-    print("t_f1", t_f1)
+    # print("t_f1", t_f1)
 
     # F1 for task args
     for pred_argvalue, label_argvalue in zip(pred_taskargvalues, label_taskargvalues):
@@ -333,7 +349,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         v_f1 += f1
     v_f1 /= len(pred_taskargvalues)
-    print("v_f1", v_f1)
+    # print("v_f1", v_f1)
 
     # F1 for task links
     link_f1 = 0
@@ -349,7 +365,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         link_f1 += f1
     link_f1 /= len(pred_tasklinks)
-    print("edge_f1", link_f1)
+    # print("edge_f1", link_f1)
+    return rouge_scores[0], rouge_scores[1], name_f1, t_f1, v_f1, link_f1
 
 
 if __name__ == "__main__":
