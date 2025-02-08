@@ -37,7 +37,7 @@ def create_directories(eval_data_path: str, eval_result_path: str, model_name: s
     ]
     for path in paths:
         os.makedirs(path, exist_ok=True)
-    print(f"Mkdir '{os.path.abspath(eval_data_path)}' and '{os.path.abspath(eval_result_path)}'...")
+    # print(f"Mkdir '{os.path.abspath(eval_data_path)}' and '{os.path.abspath(eval_result_path)}'...")
 
 def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
                   max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
@@ -48,14 +48,15 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
             use_sharegpt_format=False,
             max_input_tokens=max_model_len,
             gpu_memory_utilization=gpu_memory_utilization,
-            batch_size=batch_size
+            batch_size=batch_size,
+            max_output_tokens=512
         )
     else:
         llm = LLM(model=model, is_api=is_api)
     return llm
 
 def load_eval_data(input_data_path: str) -> List[Dict]:
-    print(f"Getting data from {os.path.abspath(input_data_path)}...")
+    # print(f"Getting data from {os.path.abspath(input_data_path)}...")
     with open(input_data_path, "r", encoding='utf-8') as f:
         eval_data = json.load(f)
     return eval_data
@@ -63,6 +64,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--Team-ACE--ToolACE-8B/snapshots/d1893ac3ada07430e67e15005c022bcf68a86f0c")
 @click.option("--dataset_name_list", type=list[str], default= ["test_out_domain", "dev", "test_in_domain"])
+# @click.option("--dataset_name_list", type=list[str], default= ["test_out_domain"])
 @click.option("--input_path", type=str, default= "../../src/data/input_data/Seal-Tools")
 @click.option("--raw_data_path", type=str, default= "../../src/data/raw_pred_data/Seal-Tools")
 @click.option("--eval_data_path", type=str, default= '../../src/data/pred_data/Seal-Tools')
@@ -89,6 +91,7 @@ def main(
     create_directories(eval_data_path, eval_result_path, model_name)
     llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
+    data_results = {}
     for dataset in dataset_name_list:
         input_data_path = os.path.join(input_path, f"{dataset}.json") 
         eval_data = load_eval_data(input_data_path)
@@ -104,7 +107,7 @@ def main(
                 output_path =  os.path.join(raw_data_path, f"api_{dataset}_{model_name}.json") 
             else: 
                 output_path = os.path.join(raw_data_path, f"vllm_{dataset}_{model_name}.json")  
-        print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
+        # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
         def run_inference() -> List:
             if os.path.exists(output_path): # if exist
@@ -122,7 +125,7 @@ def main(
                         with llm.start_server():
                             results = llm.batch_generate_chat(messages)
                     else:
-                        print("You are using batch_generate_chat to execute inference")
+                        # print("You are using batch_generate_chat to execute inference")
                         results = llm.batch_generate_chat(messages)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
@@ -134,10 +137,12 @@ def main(
         eval_data_filename = os.path.join(eval_data_path, model_name, dataset + ".json")
         write_jsonl(eval_data_filename, eval_data) 
         result, badcases = calculate_score_ToolLearning(eval_data_filename) 
+        data_results[f"{dataset}"] = result
         result_data_filename = os.path.join(eval_result_path, model_name, dataset + ".json")
         badcases_filename = os.path.join(eval_result_path, model_name, f"{model_name}-seal-{dataset}.json")
         write_json(result_data_filename, result, indent=4)
         write_json(badcases_filename, badcases, indent=4)
+    print(data_results)
 
 if __name__ == "__main__":
     main()
