@@ -32,7 +32,7 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 def main(model: str, data_path: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
     # Initialize
     data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-    tool_path = "/home/test/test03/szj/BodhiAgent-main/src/data/sft_data/TaskBench/"
+    tool_path = "../data/sft_data/TaskBench/"
     tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
     tool_desc = json.load(open(tool_desc_file, "r"))
     eval_data = json.load(open(data_path, "r"))
