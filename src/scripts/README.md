@@ -91,6 +91,12 @@ bash bfcl_setup.sh
 
 For locally downloaded models, you need to add the corresponding processor in the handler mapping file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 108 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`. If you want to run the program in parallel, you can Modify the port in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/constant.py`
 
+If you want to use your locally trained model, make sure that the model path name does not contain underscores ("_"). Otherwise, you will need to add code similar to the following around line 335 in `bfcl/eval_checker/eval_runner_helper` to ensure that BFCL's processing does not cause conflicts:
+```python
+elif model_name == "sft_model_merged_lora_checkpoint-20000":
+    model_name_escaped = "/sft_model/merged_lora/checkpoint-20000"
+```
+
 To evaluate with closed-resource models
 
 - **Inference**:
