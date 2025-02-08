@@ -41,7 +41,8 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
                 use_sharegpt_format=False,
                 max_input_tokens=max_model_len,
                 gpu_memory_utilization=gpu_memory_utilization,
-                batch_size=batch_size
+                batch_size=batch_size,
+                max_output_tokens=512
         )
     else:
         llm = LLM(model=model, is_api=is_api)
@@ -143,14 +144,14 @@ def get_raven_action_input(action_input, test_action, config, version):
             try:
                 action_input = literal_eval(action_input)
             except SyntaxError:
-                print("SyntaxError")
+                # print("SyntaxError")
                 return 0
         else:
             match = re.search(r'\((.*)\)', action_input)
             if match:
                 input_list = [item for item in match.group(1).split(', ')]
             else:
-                print("MatchError")
+                # print("MatchError")
                 return 0
             for tools in config:
                 if (tools["name"]) == test_action:
@@ -162,7 +163,7 @@ def get_raven_action_input(action_input, test_action, config, version):
                 for idx, input in enumerate(input_list):
                     action_input[paramlist[idx]] = input
             except (UnboundLocalError, IndexError):
-                print("UnboundLocalError/IndexError")
+                # print("UnboundLocalError/IndexError")
                 return 0
     elif version == 2:
         action_input = action_input.replace("(", "{").replace(")", "}").replace("=", "':")
@@ -175,7 +176,7 @@ def get_raven_action_input(action_input, test_action, config, version):
         try:
             action_input = literal_eval(action_input)
         except SyntaxError:
-            print("SyntaxError")
+            # print("SyntaxError")
             return 0
     for key in list(action_input.keys()):
         if action_input[key] == '':
@@ -367,14 +368,6 @@ def raven_eval(test_data, answer_data, version):
     pi_eval(test_data, answer_data, version)
     cf_eval(test_data, answer_data, version)
 
-def show_stats(check_list, max_len):
-    print("*"*60)
-    print("Overall:")
-    print("Tool Selection: " + "{:.2f}".format(check_list[0][0] / max_len * 100))
-    print("Parameter Identification: " + "{:.2f}".format(check_list[1][0] / max_len * 100))
-    print("Content Filling: " + "{:.2f}".format(check_list[2][0] / max_len * 100))
-    print(check_list)
-
 cata_list = None
 check_list = None
 error_cases = {}
@@ -387,11 +380,12 @@ error_type_counts = {
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/songzijun/huggingface/llama3.1_8b_instruct")
 @click.option("--datasets", type=list, default=["clean", "heavy", "medium", "slight", "union"])
+# @click.option("--datasets", type=list, default=["clean"])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=16)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
-@click.option("--max_model_len", type=int, default=8192)
+@click.option("--max_model_len", type=int, default=4096)
 def main(
     model: str, 
     datasets: list,
@@ -402,16 +396,17 @@ def main(
     gpu_memory_utilization: float,
     ):
     ### Setup
-    print("Begin to run RotBench")
+    # print("Begin to run RotBench")
     model_name = os.path.basename(model)
     llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
+    data_results = {}
     for dataset in datasets:
         raw_data_path = f"../../src/data/input_data/RoTBench/First_turn/{dataset}.json"
-        print(f"Loading data from {raw_data_path}")
+        # print(f"Loading data from {raw_data_path}")
         with open(raw_data_path, "r", encoding='utf-8') as f:
             eval_data = json.load(f)
-        print(len(eval_data))
+        # print(len(eval_data))
         global cata_list
         global check_list 
         global error_cases
@@ -436,7 +431,7 @@ def main(
                 output_path = f"benchmark_results/rotbench/{model_name}/vllm_{model_name}_rotbench_{dataset}_results.json"
         if not os.path.exists(f"benchmark_results/rotbench/{model_name}"):
             os.makedirs(f"benchmark_results/rotbench/{model_name}")
-        print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
+        # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
         def run_inference() -> List:
             if os.path.exists(output_path): # if exists
@@ -454,7 +449,7 @@ def main(
                         with llm.start_server():
                             results = llm.batch_generate_chat(messages)
                     else:
-                        print("You are using batch_generate_chat to execute inference")
+                        # print("You are using batch_generate_chat to execute inference")
                         results = llm.batch_generate_chat(messages)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
@@ -467,16 +462,15 @@ def main(
             test_data = json.load(f)
         max_len = len(test_data)
         general_eval(test_data, eval_data)
-        show_stats(check_list, max_len)
 
-        print("Error Type Statistics: ")
-        for error_type, count in error_type_counts.items():
-            print(f"{error_type}: {count}")
+        # print("Error Type Statistics: ")
+        # for error_type, count in error_type_counts.items():
+        #     print(f"{error_type}: {count}")
 
         error_type_count_path = f"benchmark_results/rotbench/{model_name}/error_type_counts_{dataset}.json"
         with open(error_type_count_path, "w", encoding="utf-8") as f:
             json.dump(error_type_counts, f, ensure_ascii=False, indent=4)
-        print(f"Error type statistics have been saved to {error_type_count_path}.")
+        # print(f"Error type statistics have been saved to {error_type_count_path}.")
 
         bad_cases = []
         for idx, errors in error_cases.items():
@@ -493,7 +487,14 @@ def main(
         with open(bad_cases_path, "w", encoding="utf-8") as f:
             for case in bad_cases:
                 f.write(json.dumps(case, ensure_ascii=False) + "\n")
-        print(f"The error cases have been saved to {bad_cases_path}.")
+        # print(f"The error cases have been saved to {bad_cases_path}.")
+
+        data_results[f"{dataset}"] = {
+            "Tool Selection": "{:.4f}".format(check_list[0][0] / max_len),
+            "Parameter Identification": "{:.4f}".format(check_list[1][0] / max_len),
+            "Content Filling": "{:.4f}".format(check_list[2][0] / max_len)
+        }
+    print(data_results)
 
 if __name__ == "__main__":
     main()
