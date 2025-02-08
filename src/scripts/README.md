@@ -106,6 +106,8 @@ MODEL_METADATA_MAPPING = {
         "",
         "",
     ],
+    ...
+}
 ```
 
 To evaluate with closed-resource models
