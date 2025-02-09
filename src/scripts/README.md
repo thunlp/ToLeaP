@@ -15,10 +15,7 @@ bash bfcl_setup.sh
 # taskbench
 pip install rouge_score
 # teval
-bash teval_setup.sh
-# You may meet conflicts when installing packages...
-pip install pydantic==2.8.2
-# You may still meet conflicts, but it's not a problem...
+pip install mmengine
 # injecagent
 pip install nltk 
 pip install accelerate==0.26.0
