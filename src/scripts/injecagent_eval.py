@@ -70,11 +70,11 @@ def predict_one_case(system_prompt, user_prompt, params, item, model_class, tool
 
 def main(params):
     ### Init
-    print(params)
+    # print(params)
     if params['model_type'] == 'OpenModel':
         model_class = MODELS[params['model_type']](
             model=params['model_name'],
-            tensor_parallel_size=4,
+            tensor_parallel_size=2,
             use_sharegpt_format=False,
             max_input_tokens=4096,
             gpu_memory_utilization=0.8,
@@ -84,7 +84,7 @@ def main(params):
         model_class = MODELS[params['model_type']](params)
     system_prompt, user_prompt = PROMPT_DICT[params['prompt_type']]
     output_dir = f"./InjecAgent_results/prompted_{params['model_type']}_{os.path.basename(params['model_name'])}_{params['prompt_type']}"
-    print(f"The results will be saved to {os.path.abspath(output_dir)}")
+    # print(f"The results will be saved to {os.path.abspath(output_dir)}")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     data_dir = '../data/sft_data/InjecAgent'
@@ -161,7 +161,7 @@ def main(params):
     scores_file = os.path.join(output_dir, 'scores.json')
     with open(scores_file, 'w') as f:
         json.dump(scores, f, indent=4)
-    print(json.dumps(scores, indent=4)) 
+    print(json.dumps(scores)) 
 
 if __name__ == "__main__":
     params = parse_arguments(agent_type="prompted")

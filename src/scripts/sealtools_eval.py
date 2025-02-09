@@ -142,7 +142,7 @@ def main(
         badcases_filename = os.path.join(eval_result_path, model_name, f"{model_name}-seal-{dataset}.json")
         write_json(result_data_filename, result, indent=4)
         write_json(badcases_filename, badcases, indent=4)
-    print(data_results)
+    print(json.dumps(data_results))
 
 if __name__ == "__main__":
     main()

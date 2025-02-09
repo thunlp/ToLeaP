@@ -494,7 +494,7 @@ def main(
             "Parameter Identification": "{:.4f}".format(check_list[1][0] / max_len),
             "Content Filling": "{:.4f}".format(check_list[2][0] / max_len)
         }
-    print(data_results)
+    print(json.dumps(data_results))
 
 if __name__ == "__main__":
     main()
