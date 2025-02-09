@@ -5,7 +5,13 @@
 - For **vllm batch inference**, configure the `port`, `host`, and `use_chat` values.
 - For **API models**, set the `port`, `host`, `use_chat`, `api_key`, and `api_base` values.
 
-To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run `python one-click-evaluation.py /path/to/your/model`(It is not yet complete, but you can use `bash one-click-evaluation.sh model_path` for partial evaluation.). All evaluation results will be returned in JSON format. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
+To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run 
+```
+bash one-click-evaluation.sh /path/to/your/model $IS_API
+# Example
+bash one-click-evaluation.sh /home/test/test03/models/Meta-Llama-3.1-8B-Instruct False
+```
+All evaluation results will be returned in JSON format named `$MODEL_results.json` under `src/scripts` path. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
 
 #### Set up the unified environment
 ```
