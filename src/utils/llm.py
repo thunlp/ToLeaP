@@ -80,16 +80,16 @@ def extract_first_json(text):
 class LLM:
     def __init__(
         self,
-        model: str = "/hy-tmp/3.1-8B", # 这个是vllm的model path，和huggingface保持统一
-        gpu_memory_utilization: float = 0.9, # 0-1，代表用多少gpu。越高占显存越多但batch处理会加速
+        model: str = "/hy-tmp/3.1-8B", 
+        gpu_memory_utilization: float = 0.9, 
         is_api: bool = False,
-        dtype: str = None, # 建议不设，用模型config自己的
-        tensor_parallel_size: int = 1, # 用多少张gpu
-        use_sharegpt_format: bool = False, # 是否使用sharegpt格式
-        max_past_message_include: int = -1, # 历史记录看多少，-1代表全部
-        max_input_tokens: int = None, # 输入最大token数，-1代表使用默认
-        max_output_tokens: int = 4096, # 输出最大token数，-1代表使用默认
-        batch_size: int = 1, # 批处理大小
+        dtype: str = None, 
+        tensor_parallel_size: int = 1, 
+        use_sharegpt_format: bool = False, 
+        max_past_message_include: int = -1, 
+        max_input_tokens: int = None, 
+        max_output_tokens: int = 512,
+        batch_size: int = 16, 
     ):
         # env initialization
         self.port = conf.port
@@ -235,6 +235,7 @@ class LLM:
                 model=self.model_path_or_name,
                 messages=messages,
                 temperature=temperature,
+                max_tokens=self.max_output_tokens
             )
             return index, chat_output.choices[0].message.content
         
