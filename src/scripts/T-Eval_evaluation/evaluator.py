@@ -248,7 +248,26 @@ class InstructEvaluator:
         return cnt / num_args
 
     def string_format_parse(self, data_sample):
+        """Return string with input content according input format template.
+
+        Args:
+            data_sample (dict): Processed response data sample.
+
+        Returns:
+            dict: Parsed data from input string according to format string. If
+                input string doesn't match template, It will return None.
+        """
+
+        # 添加类型检查和转换
         pred_data = data_sample.pred
+        if pred_data is None:
+            return None
+        if not isinstance(pred_data, str):
+            try:
+                pred_data = str(pred_data)
+            except:
+                return None
+
         template = data_sample.template
         thought_start = template['thought_start']
         thought_end = template['thought_end']
@@ -1167,6 +1186,11 @@ class ReviewEvaluator:
         if meta_data['response_format'] == 'json':
             pred_data = self.json_format_parse(pred_data)
         else:
+            # 添加对 pred_data 的 None 检查
+            if pred_data is None:
+                return ResponseDataSample(
+                    template=template, pred=None, gt=gt_data, meta_data=meta_data)
+            
             pred_data = pred_data[pred_data.find(":") + 1:]
             pred_data = pred_data.strip()
             if len(pred_data) > 0 and pred_data[0] in ['A', 'B', 'C', 'D', 'E']:
