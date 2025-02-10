@@ -89,7 +89,6 @@ def main(
     ):
     model_name = os.path.basename(model)
     create_directories(eval_data_path, eval_result_path, model_name)
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
     data_results = {}
     for dataset in dataset_name_list:
@@ -109,6 +108,9 @@ def main(
                 output_path = os.path.join(raw_data_path, f"vllm_{dataset}_{model_name}.json")  
         # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
+        if not os.path.exists(output_path):
+            llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+    
         def run_inference() -> List:
             if os.path.exists(output_path): # if exist
                 with open(output_path, "r") as f:
