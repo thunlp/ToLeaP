@@ -31,7 +31,7 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 @click.option("--is_api", type=bool, default=False)
 @click.option("--host", type=str, default="localhost")
 @click.option("--port", type=int, default=13427)
-@click.option("--tensor_parallel_size", type=int, default=4)
+@click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=16)
 def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
     data_results = {}
@@ -43,22 +43,30 @@ def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor
         tool_desc = json.load(open(tool_desc_file, "r"))
         eval_data = json.load(open(data_path, "r"))
         labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
+        
+        output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
+        parsed_output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
 
-        if not is_api:
-            llm = LLM(model=model, tensor_parallel_size=tensor_parallel_size, use_sharegpt_format=True, batch_size=30, max_output_tokens=512)
-        else:
-            llm = LLM(model=model)
+        if not os.path.exists(output_path):
+            if not is_api:
+                llm = LLM(
+                    model=model, 
+                    tensor_parallel_size=tensor_parallel_size, 
+                    use_sharegpt_format=False,
+                    max_input_tokens=4096,
+                    gpu_memory_utilization=0.9,
+                    batch_size=32, 
+                    max_output_tokens=512
+                )
+            else:
+                llm = LLM(model=model)
 
         # Run inference
-        output_path = f"{model.split('/')[-1]}_{data_split}_results.json"
-        parsed_output_path = f"{model.split('/')[-1]}_{data_split}_parsed_results.json"
-
         def run_inference():
             if os.path.exists(output_path):
                 results = json.load(open(output_path, "r"))
             else:
                 if is_api:
-                    pass
                     messages = create_messages(eval_data)
                     results = llm.batch_generate_chat(messages)
                 else:
@@ -119,7 +127,7 @@ def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor
                 "v_f1": v_f1,
                 "link_f1": link_f1
         }
-    print(data_results)
+    print(json.dumps(data_results))
     
 
 def get_content_type(content):
