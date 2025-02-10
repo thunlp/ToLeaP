@@ -398,7 +398,6 @@ def main(
     ### Setup
     # print("Begin to run RotBench")
     model_name = os.path.basename(model)
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
     data_results = {}
     for dataset in datasets:
@@ -422,17 +421,17 @@ def main(
         }
 
         ### Run inference
-        if not conf.use_chat:
+        if is_api:
+            output_path = f"benchmark_results/rotbench/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
+        else: 
             output_path = f"benchmark_results/rotbench/{model_name}/hf_{model_name}_rotbench_{dataset}_results.json"
-        else:
-            if is_api:
-                output_path = f"benchmark_results/rotbench/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
-            else: 
-                output_path = f"benchmark_results/rotbench/{model_name}/vllm_{model_name}_rotbench_{dataset}_results.json"
         if not os.path.exists(f"benchmark_results/rotbench/{model_name}"):
             os.makedirs(f"benchmark_results/rotbench/{model_name}")
         # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
 
+        if not os.path.exists(output_path):
+            llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+    
         def run_inference() -> List:
             if os.path.exists(output_path): # if exists
                 with open(output_path, "r") as f:
