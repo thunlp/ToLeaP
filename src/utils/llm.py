@@ -266,6 +266,7 @@ class LLM:
             for output in outputs:
                 all_outputs.append(output.outputs[0].text)
         return all_outputs
+
     def single_generate_complete(
         self, 
         test_case: str, 
@@ -278,3 +279,25 @@ class LLM:
         output = self.model.generate([test_case], gen_params, use_tqdm=False)
         # print(output[0].outputs[0].text)
         return output[0].outputs[0].text
+
+    def single_generate_chat(
+        self,
+        messages: List[Dict],
+        temperature: float = 0,
+    ) -> str:
+        """Generate a single chat response.
+        
+        Args:
+            messages (List[Dict]): List of message dictionaries with 'role' and 'content' keys
+            temperature (float): Sampling temperature for generation
+            
+        Returns:
+            str: Generated response text
+        """
+        chat_output = self.client.chat.completions.create(
+            model=self.model_path_or_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=self.max_output_tokens
+        )
+        return chat_output.choices[0].message.content
