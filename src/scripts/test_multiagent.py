@@ -5,11 +5,13 @@ from utils.agent import *
 from utils.memory_agent import MultiAgentMemory
 import os
 from typing import List
+from tqdm import tqdm
 
 def illustrate_messages(messages):
     for m in messages:
-        print(m['role'] + ': ' + m['content'] + '\n')
-        print('-' * 10)
+        # print(m['role'] + ': ' + m['content'] + '\n')
+        # print('-' * 10)
+        pass
 
 def create_agents(llm):
     agents = {}
@@ -64,8 +66,8 @@ def main():
 
     memory = MultiAgentMemory(save_path="multiagent_memory_{}.json".format(args.exp))
     
-    for i, d in enumerate(input_data[:50]):
-        print('Starting turn ' + str(i + 1))
+    for i, d in tqdm(enumerate(input_data), total=len(input_data)):
+        # print('Starting turn ' + str(i + 1))
         all_messages = []
         agent_messages = []
         
@@ -73,6 +75,9 @@ def main():
         system_prefix = ""
         if 'system' in d:
             system_prefix = d['system'] + "\n\n"
+        if 'tools' in d:
+            available_tools = "\n".join([str(t) for t in json.loads(d['tools'])])
+            system_prefix += f"Available tools:\n{available_tools}\n"
         system_prefix += '-' * 10 + "\n"
         system_instruction = construct_system_prompt(system_prefix)
         
@@ -85,7 +90,7 @@ def main():
         all_messages.append({"role": "system", "content": system_instruction})
         
         for i in range(0, len(d['conversations']), 2):
-            print('Handling question ' + str(i // 2 + 1))
+            # print('Handling question ' + str(i // 2 + 1))
             user_prompt = d['conversations'][i]['value']
             label = d['conversations'][i + 1]['value']
 
@@ -117,11 +122,11 @@ def main():
                         
                     memory.set_final_answer(conv_idx, turn_idx, final_answer)
                     all_answers[-1].append(final_answer)
-                    print('Max agent calls reached - generated final answer')
+                    # print('Max agent calls reached - generated final answer')
                     break
                 else:
                     all_messages.append({"role": "assistant", "content": response})
-                    print('Calling Agent')
+                    # print('Calling Agent')
                     agent_calls += 1
                 
                 try:
@@ -145,7 +150,7 @@ def main():
                 agent_response = agents[agent_to_call].respond(agent_messages)
                 agent_messages.append({"role": "assistant", "content": agent_response})
                 memory.add_agent_interaction(conv_idx, turn_idx, agent_to_call, thought, agent_response)
-                print('Agent Called')
+                # print('Agent Called')
                 all_messages.append({"role": "user", "content": f"AGENT {agent_to_call}: {agent_response}"})
 
         # break
