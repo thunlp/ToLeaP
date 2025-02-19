@@ -3,6 +3,17 @@ import sys
 import os
 from utils.bfcl import process_multiple_func_string
 
+tool_desc = {
+  "GorillaFileSystem": "bfcl/multi_turn_func_doc/gorilla_file_system.json",
+  "MathAPI": "bfcl/multi_turn_func_doc/math_api.json",
+  "MessageAPI": "bfcl/multi_turn_func_doc/message_api.json",
+  "TwitterAPI": "bfcl/multi_turn_func_doc/posting_api.json",
+  "TicketAPI": "bfcl/multi_turn_func_doc/ticket_api.json",
+  "TradingBot": "bfcl/multi_turn_func_doc/trading_bot.json",
+  "TravelAPI": "bfcl/multi_turn_func_doc/travel_booking.json",
+  "VehicleControlAPI": "bfcl/multi_turn_func_doc/vehicle_control.json"
+}
+
 def sft_multi_turn(input_file, output_file, ground_truth_file):
     with open(input_file, 'r') as f:
         data = [json.loads(line) for line in f]
@@ -19,13 +30,23 @@ def sft_multi_turn(input_file, output_file, ground_truth_file):
         
         questions = entry.get("question", [])
         ground_truth = ground_truth_data.get(entry["id"], {}).get("ground_truth", [])
+        involved_classes = entry.get("involved_classes", [])
+        tool_descriptions = [[json.loads(s) for s in open(tool_desc[cls])] for cls in involved_classes]
+        tool_description = [item for sublist in tool_descriptions for item in sublist]
+        tool_description = json.dumps(tool_description)
 
         for q, gt in zip(questions, ground_truth):
             # Add human message
-            conversations.append({
-                "from": "human",
-                "value": q
-            })
+            try:
+                conversations.append({
+                    "from": "human",
+                    "value": q[0]['content']
+                })
+            except:
+                conversations.append({
+                    "from": "human",
+                    "value": q
+                })
 
             functions = [process_multiple_func_string(func) for func in gt]
             
