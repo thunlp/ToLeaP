@@ -173,26 +173,34 @@ To evaluate with close-resource models, replace `model_type` with `GPT` or `Clau
 
 The results will be found in `src/scripts/InjecAgent_results`.
 
-### StableToolBench（测试版）
-1. 配环境
-```
+### StableToolBench
+1. Set up the environment
+```shell
 conda create -n stb python=3.10 -y && conda activate stb
 git clone https://github.com/THUNLP-MT/StableToolBench.git && cd StableToolBench
 
 pip install -r requirements.txt
-pip install --upgrade transformers # 务必更新到最新，要不然用不了新模型
-# 其他的包再说
+pip install --upgrade transformers # Ensure to update to the latest version for compatibility with new models
 ```
-但是更新完transformers后用不了retriever了，不过这东西本身运行时设的也是None，所以`toolbench/inference/Downstream_tasks/rapidapi_multithread/py`里面，一个要在开头把导入retriever函数那一行删掉，然后第573行的if-else也直接改为`retriever = None`。
+**Note:** After updating transformers, the retriever may not function properly. However, since the retriever is set to None by default during runtime, you need to make the following modifications in toolbench/inference/Downstream_tasks/rapidapi_multithread.py:
+- Remove the import line for the retriever function at the beginning.
+- Modify the if-else statement at line 573 to retriever = None.
 
-2. 推理
-默认情况下，这个仓库里只提供了闭源模型做推理的脚本，所以得自己写一个
+2. Pull the port
+Modify the settings in `server/config.yml`, then run the following command:
+```shell
+cd server
+python main.py
 ```
-export TOOLBENCH_KEY="VhqrQaPvY9g7OA507b2N8JTXzW4Gneqxi9TAYZooqvEX7iR8fD"
+
+3. Inference
+By default, the original repository only provides scripts for inference with closed-source models. You will need to write your own script for open-source models. Here’s an example script:
+```shell
+export TOOLBENCH_KEY="Vhqr..."
 export PYTHONPATH=./
 export SERVICE_URL="http://0.0.0.0:13115/virtual"
-export OUTPUT_DIR="data/answer/llama2-7b"
-export CUDA_VISIBLE_DEVICES=6
+export OUTPUT_DIR="data/answer/Llama-3.1-8B-Instruct_CoT"
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 group=G1_instruction
 mkdir -p $OUTPUT_DIR; mkdir -p $OUTPUT_DIR/$group
 python toolbench/inference/qa_pipeline_multithread.py \
@@ -206,16 +214,23 @@ python toolbench/inference/qa_pipeline_multithread.py \
     --toolbench_key $TOOLBENCH_KEY \
     --num_thread 1
 ```
-这个脚本运行时有几个地方要改，一个是`export OUTPUT_DIR`视模型而定，然后数据集`group`有好几个，`--tool_root_dir`那个需要依据代码仓库的指示下载，`backbone_model`开源的就用toolllama就行，目前没遇到任何问题，用别的得自己再写文件，`method`有CoT和DFS，默认就用CoT了，`num_thread`可以改，大于1的话`rapidapi_multithread/py`里面就走别的分支，问题不大，还有一个`--overwrite`，不过就不覆盖了。
+Customizations:
+- You must apply for a `TOOLBENCH_KEY` to use this project.
+- Ensure that `SERVICE_URL` matches the configuration in `config.yml`.
+- Adjust export OUTPUT_DIR based on the model you are using. It is recommended to create separate folders for `CoT` and `DFS`.
+- The `group` dataset has several options：`G1_category`, `G1_instruction`, `G1_tool`, `G2_category`, `G2_instruction`, and `G3_instruction`.
+- The --tool_root_dir needs to be downloaded as per the repository's instructions. Click the url [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/f/07ee752ad20b43ed9b0d/?dl=1) link to download two folders named `tools` and `tool_response_cache`, and place them under the `server` folder.
+- For open-source models, using `toolllama` as the `--backbone_model` is sufficient. If you want to modify this option, you must add new Python code and adjust the model initialization logic.
+- The `--method` can be either CoT or DFS. Use `CoT@1` or `DFS_woFilter_w2`.
+- The `--num_thread` can be increased for parallel processing.
+- The `--overwrite` flag is optional and not used here.
 
-这个推理速度还是很慢的，一个数据集可能就得半天，要是数据集都跑一遍，然后CoT和DFS再跑一遍，不知道要到什么时候。
-
-结果就在`OUTPUT_DIR="data/answer/llama2-7b"`这里保存了，首先需要转换数据格式，直接跑也行，写个脚本也行
+The results are saved in `OUTPUT_DIR`. To convert the data format, run the following:
 ```
 cd toolbench/tooleval
 export RAW_ANSWER_PATH=../../data/answer
 export CONVERTED_ANSWER_PATH=../../data_example/model_predictions_converted
-export MODEL_NAME=toolllama2
+export MODEL_NAME=Llama-3.1-8B-Instruct_CoT
 export test_set=G1_instruction
 
 mkdir -p ${CONVERTED_ANSWER_PATH}/${MODEL_NAME}
@@ -224,17 +239,18 @@ output_file=${CONVERTED_ANSWER_PATH}/${MODEL_NAME}/${test_set}.json
 
 python convert_to_answer_format.py \
     --answer_dir ${answer_dir} \
-    --method CoT@1 # DFS_woFilter_w2 for DFS \
+    --method CoT@1 \
     --output ${output_file}
 ```
-这个里面`MODEL_NAME`就看你刚才设置的保存路径是什么了，`--output`参数跑的时候不知道有什么毛病不读，不过代码里面也有默认路径，不是必选参数，注意当前路径下生成了一个`converted_answers.json`文件就ok。
+Customizations:
+- `MODEL_NAME` should match the `OUTPUT_DIR` you set earlier.
+- The `--output` parameter may not always be read correctly, but the code has a default path. A `converted_answers.json` file will be generated in the current directory.
 
-然后得设置api
 Next, you can calculate the Solvable Pass Rate. Before running the process, you need to specify your evaluation OpenAI key in openai_key.json as follows:
 ```
 [
     {
-        "api_key": "sk-qIxQ0Q30C9HQICt754Ae55168eDb4aD5890b039522A7243b",
+        "api_key": "sk-qIxQ...",
         "api_base": "https://toollearning.cn/v1"
     },
     ...
@@ -248,8 +264,8 @@ export API_POOL_FILE=../../openai_key.json
 export CONVERTED_ANSWER_PATH=../../data_example/model_predictions_converted
 export SAVE_PATH=../../data_example/pass_rate_results
 mkdir -p ${SAVE_PATH}
-export CANDIDATE_MODEL=virtual_chatgpt_cot
-export EVAL_MODEL=gpt-3.5-turbo # 先用便宜的测了
+export CANDIDATE_MODEL=Llama-3.1-8B-Instruct_CoT
+export EVAL_MODEL=gpt-3.5-turbo
 mkdir -p ${SAVE_PATH}/${CANDIDATE_MODEL}
 
 python eval_pass_rate.py \
