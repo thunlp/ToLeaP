@@ -75,75 +75,122 @@ def extract_first_json(text):
         return json.loads(json_str)
     except (json.JSONDecodeError, TypeError):
         return None
-    
-def evaluate_function_calls(predictions, ground_truths):
+
+def extract_function_call(s: str) -> dict:
+    """从字符串中提取第一个包含'name'字段的JSON对象"""
+    pattern = r"\{[^{}]*\"name\"[^{}]*\}"
+    matches = re.findall(pattern, s)
+    for match in matches:
+        try:
+            obj = json.loads(match)
+            if "name" in obj:
+                return obj
+        except json.JSONDecodeError:
+            continue
+    return None
+
+def validate_schema(data: dict) -> bool:
+    """验证是否为有效的函数调用结构"""
+    return isinstance(data, dict) and "name" in data and "arguments" in data
+
+def normalize_value(value) -> object:
+    """统一参数值类型"""
+    if isinstance(value, str):
+        # 尝试转换为数字类型
+        try:
+            return float(value) if '.' in value else int(value)
+        except ValueError:
+            # 处理布尔字符串
+            if value.lower() in ["true", "false"]:
+                return value.lower() == "true"
+            # 统一小写处理字符串
+            return value.lower().strip()
+    return value
+
+def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) -> Dict:
     """
-    评估函数调用准确率
-    :param predictions: LLM预测结果列表（字符串列表）
-    :param ground_truths: 真实值列表（字符串列表）
-    :return: 评估结果字典
+    评估函数调用准确率（支持多指标评估）
+    
+    返回结构：
+    {
+        "function_accuracy": 函数名准确率,
+        "argument_name_accuracy": 参数名准确率,
+        "argument_value_accuracy": 参数值准确率,
+        "total_samples": 有效样本总数,
+        "function_correct": 函数名正确数,
+        "argument_name_correct": 参数名正确数,
+        "argument_value_correct": 参数值正确数,
+        "invalid_ground_truth": 无效真实值数量,
+        "invalid_predictions": 无效预测数量
+    }
     """
     stats = {
         "total": 0,
         "function_correct": 0,
-        "argument_correct": 0,
+        "argument_name_correct": 0,
+        "argument_value_correct": 0,
         "invalid_gt": 0,
         "invalid_pred": 0
     }
 
-    for pred, gt in zip(predictions, ground_truths):
-        # 解析ground truth
-        gt_json = extract_first_json(gt)
-        if not validate_ground_truth(gt_json):
+    for pred_str, gt_str in zip(predictions, ground_truths):
+        # 解析真实值
+        gt_data = extract_first_json(gt_str)
+        if not validate_ground_truth(gt_data):
             stats["invalid_gt"] += 1
-            print("Wrong Ground-truth:")
-            print(gt)
             continue
 
-        # 解析预测结果
-        pred_json = extract_first_json(pred)
-        if not validate_prediction(pred_json):
+        # 解析预测值
+        pred_data = extract_first_json(pred_str)
+        if not validate_prediction(pred_data):
             stats["invalid_pred"] += 1
-            stats["total"] += 1
-            print("Wrong Prediction:")
-            print(pred)
+            stats["total"] += 1  # 计入总样本数
             continue
 
         stats["total"] += 1
         
         # 比较函数名称
-        if pred_json.get("name") == gt_json.get("name"):
+        if pred_data["name"] == gt_data["name"]:
             stats["function_correct"] += 1
             
-            # 比较参数（深度比较字典内容）
-            pred_args = pred_json.get("arguments", {})
-            gt_args = gt_json.get("arguments", {})
+            # 准备参数比较
+            pred_args = pred_data.get("arguments", {})
+            gt_args = gt_data.get("arguments", {})
             
-            # 统一参数值类型（处理数字字符串与数字的差异）
-            def normalize(value):
-                if isinstance(value, str):
-                    try:
-                        return float(value) if '.' in value else int(value)
-                    except ValueError:
-                        return value.lower().strip()
-                return value
-            
-            normalized_pred = {k: normalize(v) for k, v in pred_args.items()}
-            normalized_gt = {k: normalize(v) for k, v in gt_args.items()}
-            
-            if normalized_pred == normalized_gt:
-                stats["argument_correct"] += 1
+            # 比较参数名称集合
+            if set(pred_args.keys()) == set(gt_args.keys()):
+                stats["argument_name_correct"] += 1
+                
+                # 比较参数值（逐个参数比较）
+                all_values_match = True
+                for key in gt_args.keys():
+                    # 统一参数值类型
+                    normalized_pred = normalize_value(pred_args[key])
+                    normalized_gt = normalize_value(gt_args[key])
+                    
+                    if normalized_pred != normalized_gt:
+                        all_values_match = False
+                        break
+                
+                if all_values_match:
+                    stats["argument_value_correct"] += 1
 
-    # 计算准确率
-    function_acc = stats["function_correct"] / stats["total"] if stats["total"] > 0 else 0
-    argument_acc = stats["argument_correct"] / stats["function_correct"] if stats["function_correct"] > 0 else 0
-    
+            # else:
+            #     print("##### Params Name Error #####")
+            #     print("Standard Reply:")
+            #     print(gt_data)
+            #     print("LLM Reply:")
+            #     print(pred_data)
+
+    # 计算各项指标
     return {
-        "function_accuracy": round(function_acc, 4),
-        "argument_accuracy": round(argument_acc, 4),
+        "function_accuracy": round(stats["function_correct"] / stats["total"], 4) if stats["total"] > 0 else 0.0,
+        "argument_name_accuracy": round(stats["argument_name_correct"] / stats["function_correct"], 4) if stats["function_correct"] > 0 else 0.0,
+        "argument_value_accuracy": round(stats["argument_value_correct"] / stats["argument_name_correct"], 4) if stats["argument_name_correct"] > 0 else 0.0,
         "total_samples": stats["total"],
         "function_correct": stats["function_correct"],
-        "argument_correct": stats["argument_correct"],
+        "argument_name_correct": stats["argument_name_correct"],
+        "argument_value_correct": stats["argument_value_correct"],
         "invalid_ground_truth": stats["invalid_gt"],
         "invalid_predictions": stats["invalid_pred"]
     }
@@ -237,6 +284,8 @@ def main(
     with open(output_path, encoding="utf-8") as f:
         test_data = json.load(f)
     
+    print("*"*10 + "OUTCOME" + "*"*10)
+    print(model)
     print(evaluate_function_calls(eval_data, test_data))
 
 if __name__ == "__main__":
