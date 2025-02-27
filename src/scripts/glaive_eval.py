@@ -217,7 +217,8 @@ def get_prompt(data_entry):
     sample_str = data_entry
 
     functioncall_index = sample_str.find("<functioncall>")
-    assert functioncall_index != -1
+    if functioncall_index == -1:
+        return "No function tasks, the evaluation code will pass this query."
     prompt_end = functioncall_index + len("<functioncall>")
     prompt = sample_str[:prompt_end]
     
