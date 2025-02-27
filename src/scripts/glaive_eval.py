@@ -76,18 +76,13 @@ def extract_first_json(text):
     except (json.JSONDecodeError, TypeError):
         return None
 
-def extract_function_call(s: str) -> dict:
-    """从字符串中提取第一个包含'name'字段的JSON对象"""
-    pattern = r"\{[^{}]*\"name\"[^{}]*\}"
-    matches = re.findall(pattern, s)
-    for match in matches:
-        try:
-            obj = json.loads(match)
-            if "name" in obj:
-                return obj
-        except json.JSONDecodeError:
-            continue
-    return None
+def extract_function_call(text):
+    pattern = re.compile(r'<functioncall>\s*({.*?})\s*(?=\n[A-Z]+\s*:)', re.DOTALL)
+    match = pattern.search(text)
+    print("##### match:")
+    print(match)
+    print("##### match over/")
+    return match.group(1).strip() if match else None
 
 def validate_schema(data: dict) -> bool:
     """验证是否为有效的函数调用结构"""
@@ -134,19 +129,25 @@ def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) ->
     }
 
     for pred_str, gt_str in zip(predictions, ground_truths):
-        # 解析真实值
-        gt_data = extract_first_json(gt_str)
+        print("#"*10)
+        print(repr(gt_str))
+        gt_data = extract_function_call(gt_str)
+        print(gt_data)
         if not validate_ground_truth(gt_data):
             stats["invalid_gt"] += 1
             continue
+        print("GT pass")
 
-        # 解析预测值
+        print("*"*10)
+        print(pred_str)
         pred_data = extract_first_json(pred_str)
+        print(pred_data)
         if not validate_prediction(pred_data):
             stats["invalid_pred"] += 1
             stats["total"] += 1  # 计入总样本数
             continue
-
+        print("PRED pass")
+        assert False
         stats["total"] += 1
         
         # 比较函数名称
@@ -154,12 +155,22 @@ def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) ->
             stats["function_correct"] += 1
             
             # 准备参数比较
-            pred_args = pred_data.get("arguments", {})
+            if "arguments" in pred_data:
+                pred_args = pred_data["arguments"]
+            elif "parameters" in pred_data:
+                pred_args = pred_data["parameters"]
+            else:
+                pred_args = {}
             gt_args = gt_data.get("arguments", {})
             
             # 比较参数名称集合
             if set(pred_args.keys()) == set(gt_args.keys()):
                 stats["argument_name_correct"] += 1
+                print("##### Params Name Correct #####")
+                print("Standard Reply:")
+                print(gt_data)
+                print("LLM Reply:")
+                print(pred_data)
                 
                 # 比较参数值（逐个参数比较）
                 all_values_match = True
@@ -175,12 +186,12 @@ def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) ->
                 if all_values_match:
                     stats["argument_value_correct"] += 1
 
-            # else:
-            #     print("##### Params Name Error #####")
-            #     print("Standard Reply:")
-            #     print(gt_data)
-            #     print("LLM Reply:")
-            #     print(pred_data)
+            else:
+                print("##### Params Name Error #####")
+                print("Standard Reply:")
+                print(gt_data)
+                print("LLM Reply:")
+                print(pred_data)
 
     # 计算各项指标
     return {
@@ -200,9 +211,12 @@ def validate_ground_truth(gt_json):
     return (
         gt_json is not None and 
         isinstance(gt_json, dict) and 
-        "name" in gt_json and 
+        (("name" in gt_json and 
         "arguments" in gt_json and 
-        isinstance(gt_json["arguments"], dict)
+        isinstance(gt_json["arguments"], dict)) or
+        ("name" in gt_json and 
+        "parameters" in gt_json and 
+        isinstance(gt_json["parameters"], dict))) 
     )
 
 def validate_prediction(pred_json):
@@ -210,15 +224,19 @@ def validate_prediction(pred_json):
     return (
         pred_json is not None and 
         isinstance(pred_json, dict) and 
-        "name" in pred_json
+        (("name" in pred_json and 
+        "arguments" in pred_json and 
+        isinstance(pred_json["arguments"], dict)) or
+        ("name" in pred_json and 
+        "parameters" in pred_json and 
+        isinstance(pred_json["parameters"], dict))) 
     )
 
 def get_prompt(data_entry):
     sample_str = data_entry
 
     functioncall_index = sample_str.find("<functioncall>")
-    if functioncall_index == -1:
-        return "No function tasks, the evaluation code will pass this query."
+    assert functioncall_index != -1
     prompt_end = functioncall_index + len("<functioncall>")
     prompt = sample_str[:prompt_end]
     
@@ -287,7 +305,7 @@ def main(
     
     print("*"*10 + "OUTCOME" + "*"*10)
     print(model)
-    print(evaluate_function_calls(eval_data, test_data))
+    print(evaluate_function_calls(test_data[:10], eval_data[:10]))
 
 if __name__ == "__main__":
     main()
