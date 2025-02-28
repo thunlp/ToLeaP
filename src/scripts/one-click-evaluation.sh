@@ -48,6 +48,9 @@ bfcl evaluate \
     --model $MODEL_PATH >> "BFCL_results.txt"
 python standard_bfcl.py | grep -oP '\{.*\}' >> $OUTPUT_FILE
 
+# Skythought
+bash one-click-sky.sh $MODEL_PATH | grep -oP '\{.*\}' >> $OUTPUT_FILE
+
 # T-Eval
 export USE_CHAT="Yes"
 export PORT=14425
