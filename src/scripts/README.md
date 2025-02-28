@@ -190,6 +190,10 @@ To evaluate with close-resource models, replace `model_type` with `GPT` or `Clau
 
 The results will be found in `src/scripts/InjecAgent_results`.
 
+### SkyThought
+Use `pip install skythought` to set up the environment. Then run `one-click-sky.sh /your/model` to get the result.
+Modify the `tasks` in `one-click-sky.sh` to use your expected datasets. It contains math500, numina, numina_amc_aime, numina_math, numina_olympiads, taco, olympiadbench_math_en, aime24_sky, aime24, aime25, amc23, livecodebench_medium, livecodebench, livecodebench_easy, livecodebench_hard, arc_c, apps, mmlu, mmlu_pro, gsm8k, minervamath, gpqa_diamond.
+
 ### StableToolBench
 1. Set up the environment
 ```shell
