@@ -76,13 +76,26 @@ def extract_first_json(text):
     except (json.JSONDecodeError, TypeError):
         return None
 
-def extract_function_call(text):
-    pattern = re.compile(r'<functioncall>\s*({.*?})\s*(?=\n[A-Z]+\s*:)', re.DOTALL)
-    match = pattern.search(text)
-    print("##### match:")
-    print(match)
-    print("##### match over/")
-    return match.group(1).strip() if match else None
+def extract_function_call(input_str):
+    pattern = r"<functioncall> (\{.*?\})"
+    match = re.search(pattern, input_str)
+    if match:
+        # 提取匹配到的字符串
+        function_call_str = match.group(1)
+        
+        # 进一步处理：分割出函数的名称和参数
+        try:
+            function_call_json = json.loads(function_call_str.replace("'", '"'))  # 处理引号替换
+            return function_call_json
+        except json.JSONDecodeError:
+            try:
+                # 如果解析失败，尝试加一个 } 再解析
+                function_call_str = function_call_str + "}"
+                function_call_json = json.loads(json.dumps(function_call_str))
+                return function_call_json
+            except json.JSONDecodeError:
+                return None
+    return None
 
 def validate_schema(data: dict) -> bool:
     """验证是否为有效的函数调用结构"""
@@ -102,23 +115,7 @@ def normalize_value(value) -> object:
             return value.lower().strip()
     return value
 
-def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) -> Dict:
-    """
-    评估函数调用准确率（支持多指标评估）
-    
-    返回结构：
-    {
-        "function_accuracy": 函数名准确率,
-        "argument_name_accuracy": 参数名准确率,
-        "argument_value_accuracy": 参数值准确率,
-        "total_samples": 有效样本总数,
-        "function_correct": 函数名正确数,
-        "argument_name_correct": 参数名正确数,
-        "argument_value_correct": 参数值正确数,
-        "invalid_ground_truth": 无效真实值数量,
-        "invalid_predictions": 无效预测数量
-    }
-    """
+def evaluate_function_calls(predictions: List[str], ground_truths: List[str], output_dir: str) -> Dict:
     stats = {
         "total": 0,
         "function_correct": 0,
@@ -128,50 +125,55 @@ def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) ->
         "invalid_pred": 0
     }
 
+    # 记录每个错误类型的原始数据
+    function_accuracy_errors = []
+    argument_name_accuracy_errors = []
+    argument_value_accuracy_errors = []
+
+    # 记录无效的ground truth和预测
+    os.makedirs(output_dir, exist_ok=True)
+
+    invalid_gt_path = os.path.join(output_dir, "invalid_gt.json")
+    invalid_pred_path = os.path.join(output_dir, "invalid_pred.json")
+
+    invalid_gt_data = []
+    invalid_pred_data = []
     for pred_str, gt_str in zip(predictions, ground_truths):
-        print("#"*10)
-        print(repr(gt_str))
         gt_data = extract_function_call(gt_str)
-        print(gt_data)
+        if gt_data is None:
+            continue
+        try:
+            gt_data = json.loads(gt_data)
+        except:
+            continue
         if not validate_ground_truth(gt_data):
             stats["invalid_gt"] += 1
+            invalid_gt_data.append(
+                {"gt_str": gt_str, "gt_data": gt_data}
+            )
             continue
-        print("GT pass")
 
-        print("*"*10)
-        print(pred_str)
         pred_data = extract_first_json(pred_str)
-        print(pred_data)
         if not validate_prediction(pred_data):
             stats["invalid_pred"] += 1
-            stats["total"] += 1  # 计入总样本数
+            stats["total"] += 1
+            invalid_pred_data.append(
+                {"pred_str": pred_str, "pred_data": pred_data}
+            )
             continue
-        print("PRED pass")
-        assert False
+
         stats["total"] += 1
         
-        # 比较函数名称
         if pred_data["name"] == gt_data["name"]:
             stats["function_correct"] += 1
             
-            # 准备参数比较
-            if "arguments" in pred_data:
-                pred_args = pred_data["arguments"]
-            elif "parameters" in pred_data:
-                pred_args = pred_data["parameters"]
-            else:
-                pred_args = {}
+            pred_args = pred_data.get("arguments", {})
             gt_args = gt_data.get("arguments", {})
             
             # 比较参数名称集合
             if set(pred_args.keys()) == set(gt_args.keys()):
                 stats["argument_name_correct"] += 1
-                print("##### Params Name Correct #####")
-                print("Standard Reply:")
-                print(gt_data)
-                print("LLM Reply:")
-                print(pred_data)
-                
+
                 # 比较参数值（逐个参数比较）
                 all_values_match = True
                 for key in gt_args.keys():
@@ -181,17 +183,36 @@ def evaluate_function_calls(predictions: List[str], ground_truths: List[str]) ->
                     
                     if normalized_pred != normalized_gt:
                         all_values_match = False
+                        argument_value_accuracy_errors.append({"prediction": pred_data, "ground_truth": gt_data})
                         break
                 
                 if all_values_match:
                     stats["argument_value_correct"] += 1
-
             else:
-                print("##### Params Name Error #####")
-                print("Standard Reply:")
-                print(gt_data)
-                print("LLM Reply:")
-                print(pred_data)
+                argument_name_accuracy_errors.append({"prediction": pred_data, "ground_truth": gt_data})
+        else:
+            function_accuracy_errors.append({"prediction": repr(pred_data["name"]), "ground_truth": repr(gt_data["name"])})
+                
+    # 保存每种错误类型
+    with open(os.path.join(output_dir, "function_accuracy_errors.json"), "w", encoding="utf-8") as f:
+        json.dump(function_accuracy_errors, f, indent=4)
+
+    with open(os.path.join(output_dir, "argument_name_accuracy_errors.json"), "w", encoding="utf-8") as f:
+        json.dump(argument_name_accuracy_errors, f, indent=4)
+
+    with open(os.path.join(output_dir, "argument_value_accuracy_errors.json"), "w", encoding="utf-8") as f:
+        json.dump(argument_value_accuracy_errors, f, indent=4)
+
+    # 保存无效的ground truth和预测
+    with open(invalid_gt_path, "w", encoding="utf-8") as f:
+        json.dump(invalid_gt_data, f, indent=4)
+
+    with open(invalid_pred_path, "w", encoding="utf-8") as f:
+        json.dump(invalid_pred_data, f, indent=4)
+
+    print(stats["total"])
+    print(stats["function_correct"])
+    print(stats["argument_name_correct"])
 
     # 计算各项指标
     return {
@@ -211,12 +232,9 @@ def validate_ground_truth(gt_json):
     return (
         gt_json is not None and 
         isinstance(gt_json, dict) and 
-        (("name" in gt_json and 
-        "arguments" in gt_json and 
-        isinstance(gt_json["arguments"], dict)) or
         ("name" in gt_json and 
-        "parameters" in gt_json and 
-        isinstance(gt_json["parameters"], dict))) 
+        "arguments" in gt_json and 
+        isinstance(gt_json["arguments"], dict)) 
     )
 
 def validate_prediction(pred_json):
@@ -236,7 +254,8 @@ def get_prompt(data_entry):
     sample_str = data_entry
 
     functioncall_index = sample_str.find("<functioncall>")
-    assert functioncall_index != -1
+    if functioncall_index == -1:
+        return "This task has no <functioncall>. Evaluation code will skip this query."
     prompt_end = functioncall_index + len("<functioncall>")
     prompt = sample_str[:prompt_end]
     
@@ -259,10 +278,9 @@ def main(
     ):
     ### Setup
     model_name = os.path.basename(model)
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
     data_results = {}
-    raw_data_path = f"fc_glaive-function-calling.json"
+    raw_data_path = f"glaive-function-calling.json"
     with open(raw_data_path, "r", encoding='utf-8') as f:
         eval_data = json.load(f)
 
@@ -271,18 +289,23 @@ def main(
     if not os.path.exists(f"benchmark_results/glaive/{model_name}"):
         os.makedirs(f"benchmark_results/glaive/{model_name}")
 
+    if not os.path.exists(output_path):
+        llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+
     PROMPT = "Do not say any nonsense, only reply in the strict JSON format of {\"name\":\"specific function name\", \"arguments\": {\"specific parameter name\": \"specific parameter value\"}}."
+    
     def run_inference() -> List:
         if os.path.exists(output_path): # if exists
             with open(output_path, "r") as f:
                 results = json.load(f)
         else: # if not 
             if not conf.use_chat: # hf batch generate
+                # print(type(eval_data["sample"]))
                 # for ed in eval_data["sample"]:
                 #     print(get_prompt(ed))
                 #     assert False
                 results = llm.batch_generate_complete(
-                    [str(PROMPT + get_prompt(ed)) for ed in eval_data],
+                    [str(PROMPT + get_prompt(ed)) for ed in eval_data["sample"]],
                     temperature=0
                 )
             else:  # vllm batch generate
@@ -305,7 +328,8 @@ def main(
     
     print("*"*10 + "OUTCOME" + "*"*10)
     print(model)
-    print(evaluate_function_calls(test_data[:10], eval_data[:10]))
+    output_dir = f"benchmark_results/glaive/{model_name}"
+    print(evaluate_function_calls(test_data, eval_data["sample"], output_dir))
 
 if __name__ == "__main__":
     main()
