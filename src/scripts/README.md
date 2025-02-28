@@ -27,6 +27,23 @@ pip install nltk
 pip install accelerate==0.26.0
 ```
 
+### Glaive Evaluation
+First, get the data by
+```
+cd src/scripts
+unzip 
+To evaluate with open-source models:
+```
+
+python glaive_eval.py --model xxx
+```
+To evaluate with closed-source models:
+```
+cd src/scripts
+python rotbench_eval.py --model xxx --is_api True
+```
+The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/rotbench`.
+
 ### RoTBench Evaluation
 RoTBench uses three metrics to evaluate function calling: 
 - **Tool Selection (TS)**: Assesses whether the agent selects the correct function.
