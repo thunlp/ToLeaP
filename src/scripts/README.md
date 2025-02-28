@@ -31,18 +31,18 @@ pip install accelerate==0.26.0
 First, get the data by
 ```
 cd src/scripts
-unzip 
-To evaluate with open-source models:
+unzip glaive_data.zip
 ```
 
+To evaluate with open-source models:
+```
 python glaive_eval.py --model xxx
 ```
 To evaluate with closed-source models:
 ```
-cd src/scripts
-python rotbench_eval.py --model xxx --is_api True
+python glaive_eval.py --model xxx --is_api True
 ```
-The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/rotbench`.
+The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/glaive`.
 
 ### RoTBench Evaluation
 RoTBench uses three metrics to evaluate function calling: 
