@@ -22,6 +22,11 @@ python rotbench_eval.py \
     --model $MODEL_PATH \
     --is_api $IS_API | grep -oP '\{.*\}' >> $OUTPUT_FILE
 
+# Glaive
+python glaive_eval.py \
+    --model $MODEL_PATH \
+    --is_api $IS_API | grep -oP '\{.*\}' >> $OUTPUT_FILE
+
 # InjecAgent
 if [ "$IS_API" == "True" ]; then
     MODEL_TYPE=GPT
