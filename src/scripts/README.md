@@ -194,6 +194,44 @@ The results will be found in `src/scripts/InjecAgent_results`.
 Use `pip install skythought` to set up the environment. Then run `one-click-sky.sh /your/model` to get the result.
 Modify the `tasks` in `one-click-sky.sh` to use your expected datasets. It contains math500, numina, numina_amc_aime, numina_math, numina_olympiads, taco, olympiadbench_math_en, aime24_sky, aime24, aime25, amc23, livecodebench_medium, livecodebench, livecodebench_easy, livecodebench_hard, arc_c, apps, mmlu, mmlu_pro, gsm8k, minervamath, gpqa_diamond.
 
+详细内容：
+## 
+
+1. Set up the environment
+
+```bash
+conda create -n skybench python=3.10 -y && conda activate skybench
+git clone https://github.com/NovaSky-AI/SkyThought.git && cd SkyThought
+
+pip install skythought -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+```
+
+1. Evaluate the model on different tasks
+
+```bash
+conda activate skybench && cd SkyThought
+export HF_ENDPOINT=https://hf-mirror.com
+export CUDA_VISIBLE_DEVICES=5
+skythought evaluate \
+	--model /data3/models/models--Qwen--Qwen2.5-Coder-3B-Instruct/snapshots/488639f1ff808d1d3d0ba301aef8c11461451ec5 \
+	--task math500,aime24,aime24_sky
+	
+nohup skythought evaluate \
+	--model /data3/models/models--Qwen--Qwen2.5-Coder-3B-Instruct/snapshots/488639f1ff808d1d3d0ba301aef8c11461451ec5 \
+	--task numina \
+	> skythought-numina-Qwen2.5-Coder-3B-Instruct.log 2>&1 &
+```
+
+If you wish to add parameters, please modify line 188 in `skythought/evals/inference_and_check.py`, as follows:
+
+```python
+llm = LLM(**engine_kwargs, trust_remote_code=True, max_model_len=4096)
+```
+
+`--task` contains: `math500`, `numina`, `numina_amc_aime`, `numina_math`, `numina_olympiads`, `taco`, `olympiadbench_math_en`, `aime24_sky`, `aime24`, `aime25`, `amc23`, `livecodebench_medium`, `livecodebench`, `livecodebench_easy`, `livecodebench_hard`, `arc_c`, `apps`, `mmlu`, `mmlu_pro`, `gsm8k`, `minervamath`, `gpqa_diamond`.
+
+备注：`numina` 耗时极长（数天），`taco` 貌似用不了，`livecodebench_medium` 貌似用不了，`aime25`分为['AIME2025-I', 'AIME2025-II']。
+
 ### StableToolBench
 1. Set up the environment
 ```shell
