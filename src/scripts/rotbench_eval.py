@@ -385,7 +385,7 @@ error_type_counts = {
 @click.option("--tensor_parallel_size", type=int, default=1)
 @click.option("--batch_size", type=int, default=16)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
-@click.option("--max_model_len", type=int, default=4096)
+@click.option("--max_model_len", type=int, default=8192)
 def main(
     model: str, 
     datasets: list,
@@ -398,6 +398,18 @@ def main(
     ### Setup
     # print("Begin to run RotBench")
     model_name = os.path.basename(model)
+    
+    # Initialize LLM once outside the dataset loop
+    llm = None
+    need_llm = False
+    for dataset in datasets:
+        output_path = f"benchmark_results/rotbench/{model_name}/{'api' if is_api else 'hf'}_{model_name}_rotbench_{dataset}_results.json"
+        if not os.path.exists(output_path):
+            need_llm = True
+            break
+    
+    if need_llm:
+        llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
 
     data_results = {}
     for dataset in datasets:
@@ -428,9 +440,6 @@ def main(
         if not os.path.exists(f"benchmark_results/rotbench/{model_name}"):
             os.makedirs(f"benchmark_results/rotbench/{model_name}")
         # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
-
-        if not os.path.exists(output_path):
-            llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
     
         def run_inference() -> List:
             if os.path.exists(output_path): # if exists
