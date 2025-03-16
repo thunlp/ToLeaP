@@ -172,9 +172,9 @@ bash test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620
 To evaluate with open-resource models
 ```bash
 # Inference (model_path, display_name, is_api)
-bash test_all_teval.sh vllm qwen_PATH qwen2.5 False  
-# Evaluate (model_name, display_name, is_api)
-bash eval_all.sh mistral8b mistral8b False  
+bash test_all_teval.sh model_path display_name False [tensor_parallel_size] [gpu_utilization] 
+# Evaluate (model_name, display_name, is_api, nums of gpu)
+bash test_all_teval.sh /models/Llama-3.1-8B-Instruct llama3 False 2
 ```
 The results will be found in `src/scripts/T-Eval/work_dirs`.
 
