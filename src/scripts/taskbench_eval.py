@@ -43,7 +43,8 @@ def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor
         tool_desc = json.load(open(tool_desc_file, "r"))
         eval_data = json.load(open(data_path, "r"))
         labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
-        
+
+        os.makedirs("benchmark_results/taskbench", exist_ok=True)
         output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
         parsed_output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
 
