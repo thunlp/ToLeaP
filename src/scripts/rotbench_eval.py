@@ -448,8 +448,7 @@ def main(
             else: # if not 
                 if not conf.use_chat: # hf batch generate
                     results = llm.batch_generate_complete(
-                        [(ed["conversations"][0]["value"] + ed["conversations"][1]["value"]) for ed in eval_data],
-                        temperature=0
+                        [(ed["conversations"][0]["value"] + ed["conversations"][1]["value"]) for ed in eval_data]
                     )
                 else:  # vllm batch generate
                     messages = create_messages(eval_data)
