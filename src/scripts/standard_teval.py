@@ -1,4 +1,3 @@
-import json
 import mmengine
 
 def format_percentage(value):
@@ -37,7 +36,15 @@ def format_results(result_path):
         }
     }
     
-    print(json.dump(formatted_results))
+    return formatted_results
+
+def print_results(formatted_results):
+    """打印格式化后的结果"""
+    for category, values in formatted_results.items():
+        print(f"{category}:")
+        print(f"  String: {values['String']}")
+        print(f"  JSON: {values['JSON']}")
+        print()
 
 if __name__ == '__main__':
     import sys
@@ -49,3 +56,4 @@ if __name__ == '__main__':
         
     result_path = sys.argv[1]
     formatted = format_results(result_path)
+    print_results(formatted) 

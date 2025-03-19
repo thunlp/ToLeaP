@@ -52,10 +52,8 @@ python standard_bfcl.py | grep -oP '\{.*\}' >> $OUTPUT_FILE
 bash one-click-sky.sh $MODEL_PATH | grep -oP '\{.*\}' >> $OUTPUT_FILE
 
 # T-Eval
-export USE_CHAT="Yes"
-export PORT=14425
-export HOST="0.0.0.0"
 cd T-Eval
-bash test_all_teval.sh vllm $MODEL_PATH $MODEL_NAME $IS_API
+bash test_all_teval.sh $MODEL_PATH $MODEL_NAME $IS_API
+bash eval_all.sh $MODEL_NAME $MODEL_NAME
 cd ..
-python standard_teval.py T-Eval/work_dirs/$MODEL_NAME/instruct_${MODEL_NAME}_-1_.json
+python standard_teval.py T-Eval/work_dirs/$MODEL_NAME/${MODEL_NAME}_-1_.json

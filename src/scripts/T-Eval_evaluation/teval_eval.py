@@ -83,7 +83,8 @@ def main(
         model=model,
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=gpu_memory_utilization,
-        is_api=is_api
+        is_api=is_api,
+        batch_size=batch_size
     )
 
     for i, (curr_dataset, curr_out_name, curr_eval, curr_prompt) in enumerate(
