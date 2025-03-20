@@ -209,9 +209,9 @@ def evaluate(predictions, labels, data_split, tool_desc):
             pred_tasklinks.append([])
             label_tasklinks.append([])
             for i in range(len(all_pred_names) - 1):
-                pred_tasklinks[-1].append(all_pred_names[i] + " - " + all_pred_names[i+1])
+                pred_tasklinks[-1].append(str(all_pred_names[i]) + " - " + str(all_pred_names[i+1]))
             for i in range(len(all_label_names) - 1):
-                label_tasklinks[-1].append(all_label_names[i] + " - " + all_label_names[i+1])
+                label_tasklinks[-1].append(str(all_label_names[i]) + " - " + str(all_label_names[i+1]))
 
     # calculate task args
     pred_taskargnames = []
