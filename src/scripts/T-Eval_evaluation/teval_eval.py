@@ -27,8 +27,8 @@ class TevalLLM(LLM):
 @click.option("--out_name", type=str, help="Output filename list, format: [name1, name2, ...]")
 @click.option("--eval", type=str, help="Evaluation type list, format: [type1, type2, ...]")
 @click.option("--prompt_type", type=str, help="Prompt type list, format: [type1, type2, ...]")
-@click.option("--tensor_parallel_size", type=int, default=1)
-@click.option("--batch_size", type=int, default=12)
+@click.option("--tensor_parallel_size", type=int, default=8)
+@click.option("--batch_size", type=int, default=200)
 @click.option("--gpu_memory_utilization", type=float, default=0.9) 
 @click.option("--test_num", type=int, default=-1)
 @click.option("--resume", is_flag=True)
@@ -84,7 +84,7 @@ def main(
         tensor_parallel_size=tensor_parallel_size,
         gpu_memory_utilization=gpu_memory_utilization,
         is_api=is_api,
-        batch_size=batch_size
+        batch_size= batch_size
     )
 
     for i, (curr_dataset, curr_out_name, curr_eval, curr_prompt) in enumerate(
@@ -118,7 +118,7 @@ def main(
                     'rru': "ReasonRetrieveUnderstandEvaluator"
                 }
                 
-                bert_score_model = "/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--sentence-transformers--all-mpnet-base-v2/snapshots/9a3225965996d404b775526de6dbfe85d3368642"
+                bert_score_model = "/data3/models/hub/models--sentence-transformers--all-mpnet-base-v2/snapshots/9a3225965996d404b775526de6dbfe85d3368642"
                 json_path = os.path.join(out_dir, f"{model.split('/')[-1]}_{-1}_{'zh' if '_zh' in curr_dataset else ''}.json")
 
                 
