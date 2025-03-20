@@ -312,6 +312,54 @@ def transform_output_format(dataset_name, output_text):
                 return -1  
         case _:
             print("ERROR!")
+
+def transform_thought_output_format(dataset_name, output_text):
+    match dataset_name:
+        case 'ToolLearning':
+            def match_square_bracket(text, pos_s):
+                counter = -1
+                for i in range(pos_s+1,len(text)):
+                    if text[i] == '[':
+                        counter -= 1
+                    elif text[i] == ']':
+                        counter += 1
+                    if counter == 0:
+                        return i
+                return -1
+            
+            if text.find("Output:"):
+                text = text[text.find("Output:") + 8:]
+            else:
+                return -1
+            
+            text = re.sub("'", '"', output_text)
+            text = re.sub("\n", "", text)
+            pattern = re.compile("\[\s*\{\s*\"api\"", re.DOTALL)
+
+            search_result = re.search(pattern, text)
+
+            if search_result != None:
+                pos_s = search_result.span()[0]
+                pos_e = match_square_bracket(text, pos_s)
+
+                text = text[pos_s:pos_e+1]
+                # if "api" in text and "parameters" in text and "responses" in text:
+                if "api" in text and "response" in text:
+                    if "parameters" in text or "arguments" in text:
+                        try:
+                            output = json.loads(text)
+                            return output
+                        except:
+                            return -1
+                    else:
+                        return -1
+                else:
+                    return -1
+            else:
+                return -1  
+        case _:
+            print("ERROR!")
+
 def write_jsonl(data_path, dataset):
     with open(data_path,'w', encoding='UTF-8') as f:
         for data in dataset:
@@ -455,6 +503,21 @@ def raw_to_pred(raw_data_path, label_data_path):
         pred_list.append(pred_output)
     return pred_list
 
+def raw_cot_to_pred(raw_data_path, label_data_path):
+    raw_dataset = read_json(raw_data_path)
+    label_dataset = read_json(label_data_path)
+    pred_list = []
+    for raw_data,label_data in zip(raw_dataset,label_dataset):
+        pred_output = {
+                        'id':label_data["id"],
+                        'predict':[],
+                        'gold_data':label_data,
+                    }
+        output_text = raw_data[:]
+        pred_text = transform_thought_output_format("ToolLearning", output_text)
+        pred_output['predict'].append(pred_text)
+        pred_list.append(pred_output)
+    return pred_list
 if __name__ == "__main__":
     pred_folder_path = "src/data/pred_data/Seal-Tools"
     model_name = "20250108afm20000"
