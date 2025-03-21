@@ -43,7 +43,7 @@ def batch_inference(conversations, batch_size=2):
         print(i)
         batch = conversations[i:i+batch_size]
         
-        images = [safe_image_processing(conv[0]["content"][0]["path"]) for conv in batch]
+        images = [safe_image_processing(conv[0]["content"][0]["path"]) for conv in batch] # -> PIL.Image
         # Qwen2.5‑VL 的 processor 在把图像和文本拼在一起时，会自动在文本流中插入它专用的 image‑placeholder token（通常是 <ImageHere> 或 tokenizer.image_token_id 对应的 ID）
         prompts = [
             processor.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
@@ -52,7 +52,7 @@ def batch_inference(conversations, batch_size=2):
 
         inputs = processor(
             text=prompts,
-            images=images,
+            images=images, # PIL.Image -> Base64
             padding=True,
             truncation=True,
             return_tensors="pt"
