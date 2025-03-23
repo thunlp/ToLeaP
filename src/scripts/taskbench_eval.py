@@ -314,8 +314,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
     # F1 for task nodes
     name_f1 = 0
     for pred_name, label_name in zip(pred_node_names, label_node_names):
-        ground_truth = set(label_name)
-        prediction = set(pred_name)
+        ground_truth = set([str(name) for name in label_name])
+        prediction = set([str(name) for name in pred_name])
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
@@ -331,8 +331,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
     t_f1 = 0
     v_f1 = 0
     for pred_argname, label_argname in zip(pred_taskargnames, label_taskargnames):
-        ground_truth = set(label_argname)
-        prediction = set(pred_argname)
+        ground_truth = set([str(name) for name in label_argname])
+        prediction = set([str(name) for name in pred_argname])
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
@@ -347,8 +347,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
     # F1 for task args
     for pred_argvalue, label_argvalue in zip(pred_taskargvalues, label_taskargvalues):
         # import pdb; pdb.set_trace()
-        ground_truth = set(label_argvalue)
-        prediction = set(pred_argvalue)
+        ground_truth = set([str(value) for value in label_argvalue])
+        prediction = set([str(value) for value in pred_argvalue])
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
@@ -363,8 +363,8 @@ def evaluate(predictions, labels, data_split, tool_desc):
     # F1 for task links
     link_f1 = 0
     for pred_tasklink, label_tasklink in zip(pred_tasklinks, label_tasklinks):
-        ground_truth = set(label_tasklink)
-        prediction = set(pred_tasklink)
+        ground_truth = set([str(link) for link in label_tasklink])
+        prediction = set([str(link) for link in pred_tasklink])
         true_positive = ground_truth & prediction
         precision = 0 if len(prediction) == 0 else len(true_positive) / len(prediction)
         recall = 0 if len(ground_truth) == 0 else len(true_positive) / len(ground_truth)
