@@ -74,11 +74,11 @@ def main(params):
     if params['model_type'] == 'OpenModel':
         model_class = MODELS[params['model_type']](
             model=params['model_name'],
-            tensor_parallel_size=2,
+            tensor_parallel_size=4,
             use_sharegpt_format=False,
             max_input_tokens=4096,
             gpu_memory_utilization=0.8,
-            batch_size=32
+            batch_size=128
         )
     else:
         model_class = MODELS[params['model_type']](params)
