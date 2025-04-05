@@ -382,8 +382,8 @@ error_type_counts = {
 @click.option("--datasets", type=list, default=["clean", "heavy", "medium", "slight", "union"])
 # @click.option("--datasets", type=list, default=["clean"])
 @click.option("--is_api", type=bool, default=False)
-@click.option("--tensor_parallel_size", type=int, default=1)
-@click.option("--batch_size", type=int, default=16)
+@click.option("--tensor_parallel_size", type=int, default=4)
+@click.option("--batch_size", type=int, default=128)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
 @click.option("--max_model_len", type=int, default=8192)
 def main(
