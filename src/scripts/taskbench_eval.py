@@ -35,6 +35,20 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 @click.option("--batch_size", type=int, default=128)
 def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
     data_results = {}
+    
+    if not is_api:
+        llm = LLM(
+            model=model, 
+            tensor_parallel_size=tensor_parallel_size, 
+            use_sharegpt_format=False,
+            max_input_tokens=4096,
+            gpu_memory_utilization=0.9,
+            batch_size=32, 
+            max_output_tokens=512
+        )
+    else:
+        llm = LLM(model=model)
+
     for data_path in data_paths:
         # Initialize
         data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
@@ -47,20 +61,6 @@ def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor
         os.makedirs("benchmark_results/taskbench", exist_ok=True)
         output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
         parsed_output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
-
-        if not os.path.exists(output_path):
-            if not is_api:
-                llm = LLM(
-                    model=model, 
-                    tensor_parallel_size=tensor_parallel_size, 
-                    use_sharegpt_format=False,
-                    max_input_tokens=4096,
-                    gpu_memory_utilization=0.9,
-                    batch_size=32, 
-                    max_output_tokens=512
-                )
-            else:
-                llm = LLM(model=model)
 
         # Run inference
         def run_inference():
