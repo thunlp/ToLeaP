@@ -31,8 +31,8 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 @click.option("--is_api", type=bool, default=False)
 @click.option("--host", type=str, default="localhost")
 @click.option("--port", type=int, default=13427)
-@click.option("--tensor_parallel_size", type=int, default=1)
-@click.option("--batch_size", type=int, default=16)
+@click.option("--tensor_parallel_size", type=int, default=4)
+@click.option("--batch_size", type=int, default=128)
 def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
     data_results = {}
     for data_path in data_paths:
