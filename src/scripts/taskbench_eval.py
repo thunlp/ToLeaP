@@ -6,10 +6,12 @@ from typing import List, Dict
 from rouge_score import rouge_scorer
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+print(current_dir)
 utils_dir = os.path.join(current_dir, '..')
+print(utils_dir)
 sys.path.append(utils_dir)
 
-from utils.llm import LLM, extract_first_json
+from benchmark_utils.llm import LLM, extract_first_json
 
 def create_messages(conversation_data: Dict) -> List[Dict]:
     messages = []
@@ -29,11 +31,11 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
     "../data/sft_data/TaskBench/taskbench_data_multimedia.json",
 ])
 @click.option("--is_api", type=bool, default=False)
-@click.option("--host", type=str, default="localhost")
-@click.option("--port", type=int, default=13427)
 @click.option("--tensor_parallel_size", type=int, default=4)
 @click.option("--batch_size", type=int, default=128)
-def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor_parallel_size: int, batch_size: int):
+@click.option("--max_input_tokens", type=int, default=4096)
+@click.option("--max_output_tokens", type=int, default=512)
+def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, batch_size: int, max_input_tokens: int, max_output_tokens: int):
     data_results = {}
     
     if not is_api:
@@ -41,10 +43,10 @@ def main(model: str, data_paths: str, is_api: bool, host: str, port: int, tensor
             model=model, 
             tensor_parallel_size=tensor_parallel_size, 
             use_sharegpt_format=False,
-            max_input_tokens=4096,
+            max_input_tokens=max_input_tokens,
             gpu_memory_utilization=0.9,
-            batch_size=32, 
-            max_output_tokens=512
+            batch_size=batch_size, 
+            max_output_tokens=max_output_tokens
         )
     else:
         llm = LLM(model=model)
