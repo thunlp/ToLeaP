@@ -16,7 +16,7 @@ from vllm_SealTools_eval import (
 )
 
 from cfg.config import Config
-from utils.llm import LLM
+from benchmark_utils.llm import LLM
 
 def create_messages(conversation_data: List[Dict]) -> List[List[Dict]]:
     messages = []
@@ -40,7 +40,7 @@ def create_directories(eval_data_path: str, eval_result_path: str, model_name: s
     # print(f"Mkdir '{os.path.abspath(eval_data_path)}' and '{os.path.abspath(eval_result_path)}'...")
 
 def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
-                  max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
+                  max_model_len: int, gpu_memory_utilization: float, batch_size: int, max_output_tokens: int) -> LLM:
     if not is_api:
         llm = LLM(
             model=model,
@@ -49,7 +49,7 @@ def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size:
             max_input_tokens=max_model_len,
             gpu_memory_utilization=gpu_memory_utilization,
             batch_size=batch_size,
-            max_output_tokens=512
+            max_output_tokens=max_output_tokens
         )
     else:
         llm = LLM(model=model, is_api=is_api)
@@ -74,6 +74,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 @click.option("--batch_size", type=int, default=128)
 @click.option("--gpu_memory_utilization", type=float, default=0.8)
 @click.option("--max_model_len", type=int, default=4096)
+@click.option("--max_output_tokens", type=int, default=512)
 def main(
     model: str, 
     dataset_name_list: list[str], 
@@ -86,10 +87,11 @@ def main(
     batch_size: int,
     max_model_len: int,
     gpu_memory_utilization: float,
+    max_output_tokens: int,
     ):
     model_name = os.path.basename(model)
     create_directories(eval_data_path, eval_result_path, model_name)
-    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+    llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size, max_output_tokens)
     data_results = {}
     for dataset in dataset_name_list:
         input_data_path = os.path.join(input_path, f"{dataset}.json") 
