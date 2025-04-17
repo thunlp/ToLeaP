@@ -1,15 +1,12 @@
 ## 🛠️ Evaluation Method
 
 ### Configuring the Evaluation Method
-- For **hf batch inference**, set the default values in `cfg/config.yml`.
-- For **vllm batch inference**, configure the `port`, `host`, and `use_chat` values.
+- For **offline vllm batch inference**, set the default values in `cfg/config.yml`.
 - For **API models**, set the `port`, `host`, `use_chat`, `api_key`, and `api_base` values.
 
 To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run 
 ```
-bash one-click-evaluation.sh /path/to/your/model $IS_API
-# Example
-bash one-click-evaluation.sh /home/test/test03/models/Meta-Llama-3.1-8B-Instruct False
+nohup bash one-click-evaluation.sh /home/test/test12/models/models--Qwen--Qwen2.5-32B-Instruct/snapshots/5ede1c97bbab6ce5cda5812749b4c0bdf79b18dd false 4 128 5000 512 > bench-Qwen2.5-32B-Instruct.log 2>&1 &
 ```
 All evaluation results will be returned in JSON format named `$MODEL_results.json` under `src/scripts` path. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
 
@@ -101,7 +98,7 @@ python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/
 The original inference results along with bad cases will be saved under the path `src/scripts`.
 
 ### BFCL
-The evaluation framework for BFCL focuses on **accuracy** as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including simple, multiple, parallel, multiple-parallel, irrelevance, and multi-turn tasks.
+The evaluation framework for BFCL focuses on **accuracy** as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including Non-Live, Live, and multi-turn tasks.
 
 Set Up the Environment
 ```
@@ -117,7 +114,7 @@ elif model_name == "sft_model_merged_lora_checkpoint-20000":
     model_name_escaped = "/sft_model/merged_lora/checkpoint-20000"
 ```
 
-Besides, to get the multi-turn outcomes, you need to add model path in `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/eval_checker/model_metadata.py`. For example:
+Besides, to get the multi-turn outcomes, you need to add model path in `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/constants/model_metadata.py`. For example:
 ```python
 MODEL_METADATA_MAPPING = {
     "/path/to/sft_model/merged_lora/checkpoint-60000": [
