@@ -10,7 +10,7 @@ utils_dir = os.path.join(current_dir, '..')
 sys.path.append(utils_dir)
 
 from cfg.config import Config
-from utils.llm import LLM
+from benchmark_utils.llm import LLM
 
 def create_messages(conversation_data: List[Dict]) -> List[List[Dict]]:
     messages = []
@@ -264,8 +264,8 @@ def get_prompt(data_entry):
 @click.command()
 @click.option("--model", type=str, default="/home/test/test03/models/Meta-Llama-3.1-8B-Instruct")
 @click.option("--is_api", type=bool, default=False)
-@click.option("--tensor_parallel_size", type=int, default=1)
-@click.option("--batch_size", type=int, default=16)
+@click.option("--tensor_parallel_size", type=int, default=4)
+@click.option("--batch_size", type=int, default=256)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
 @click.option("--max_model_len", type=int, default=4096)
 def main(
@@ -305,8 +305,7 @@ def main(
                 #     print(get_prompt(ed))
                 #     assert False
                 results = llm.batch_generate_complete(
-                    [str(PROMPT + get_prompt(ed)) for ed in eval_data["sample"]],
-                    temperature=0
+                    [str(PROMPT + get_prompt(ed)) for ed in eval_data["sample"]]
                 )
             else:  # vllm batch generate
                 messages = create_messages(eval_data)
