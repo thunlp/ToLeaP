@@ -6,7 +6,7 @@
 
 To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run 
 ```
-nohup bash one-click-evaluation.sh /home/test/test12/models/models--Qwen--Qwen2.5-32B-Instruct/snapshots/5ede1c97bbab6ce5cda5812749b4c0bdf79b18dd false 4 128 5000 512 > bench-Qwen2.5-32B-Instruct.log 2>&1 &
+nohup bash one-click-evaluation.sh models--Qwen--Qwen2.5-32B-Instruct false 4 128 4096 512 > bench-Qwen2.5-32B-Instruct.log 2>&1 &
 ```
 All evaluation results will be returned in JSON format named `$MODEL_results.json` under `src/scripts` path. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
 
@@ -20,8 +20,7 @@ pip install rouge_score
 # teval
 pip install mmengine
 # injecagent
-pip install nltk 
-pip install accelerate==0.26.0
+pip install nltk accelerate==0.26.0
 ```
 
 ### Glaive Evaluation
@@ -149,14 +148,15 @@ T-Eval uses accuracy as the primary evaluation metric, measuring the model’s *
 
 Set Up the Environment
 ```bash
+cd src/scripts
 conda create -n teval python=3.10 -y && conda activate teval
-unzip teval_data
 bash teval_setup.sh
 ```
 Move the files related to teval to the folder `T-Eval`
 ```
-mv T-Eval_evaluation/* T-Eval/
-cd T-Eval
+mkdir T-Eval && mv T-Eval_evaluation/* T-Eval/
+rm -r T-Eval_evaluation && cd T-Eval
+mv ../../../teval_data.zip . && unzip teval_data.zip && mv teval_data data
 ```
 
 To evaluate with closed-resource models
