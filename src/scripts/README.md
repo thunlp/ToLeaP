@@ -36,20 +36,22 @@ pip install nltk accelerate==0.26.0 # injecagent
    The evaluation scores will be displayed in the terminal, and the original inference results, along with any identified issues, will be saved under the directory `src/scripts/benchmark_results/glaive`.
 
 ### RoTBench Evaluation
-RoTBench uses three metrics to evaluate function calling: 
+
+**RoTBench: A Multi-Level Benchmark for Evaluating the Robustness of Large Language Models in Tool Learning** paper, and the code from the [RoTBench](https://github.com/Junjie-Ye/RoTBench). RoTBench evaluates function calling using three main metrics:
+
 - **Tool Selection (TS)**: Assesses whether the agent selects the correct function.
 - **Parameter Identification (PI)**: Evaluates whether the agent identifies the correct parameter names for the function.
 - **Content Filling (CF)**: Checks if the agent fills the correct content into the corresponding parameters.
 
-To evaluate with open-source models:
-```
+To evaluate with open-source models, run:
+```bash
 cd src/scripts
-python rotbench_eval.py --model xxx --is_api Flse
+python rotbench_eval.py --model xxx --is_api False
 ```
 The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/rotbench`.
 
-### SealTools Evaluation
-In SealTools, **Format ACC** assesses the correctness of the model's output structure, while **Tool P/R/F1** evaluates the model's ability to choose the correct tool. **Parameter P/R/F1**, on the other hand, measures the model’s capability in accurately filling in tool parameters.  
+### Seal-Tools Evaluation
+The code comes from **Seal-Tools: Self-Instruct Tool Learning Dataset for Agent Tuning and Detailed Benchmark** paper, and the code from the [Seal-Tools](https://github.com/fairyshine/Seal-Tools). In SealTools, **Format ACC** assesses the correctness of the model's output structure, while **Tool P/R/F1** evaluates the model's ability to choose the correct tool. **Parameter P/R/F1**, on the other hand, measures the model’s capability in accurately filling in tool parameters.  
 
 To evaluate with open-source models:
 ```
