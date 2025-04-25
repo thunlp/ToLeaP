@@ -37,7 +37,7 @@ pip install nltk accelerate==0.26.0 # injecagent
 
 ### RoTBench Evaluation
 
-**RoTBench: A Multi-Level Benchmark for Evaluating the Robustness of Large Language Models in Tool Learning** paper, and the code from the [RoTBench](https://github.com/Junjie-Ye/RoTBench). RoTBench evaluates function calling using three main metrics:
+The code comes from **RoTBench: A Multi-Level Benchmark for Evaluating the Robustness of Large Language Models in Tool Learning** paper, and the code from the [RoTBench](https://github.com/Junjie-Ye/RoTBench). RoTBench evaluates function calling using three main metrics:
 
 - **Tool Selection (TS)**: Assesses whether the agent selects the correct function.
 - **Parameter Identification (PI)**: Evaluates whether the agent identifies the correct parameter names for the function.
