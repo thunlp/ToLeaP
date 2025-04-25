@@ -2,11 +2,11 @@
 
 ### Configuring the Evaluation Method
 - For **offline vllm batch inference**, set the default values in `cfg/config.yml`.
-- For **API models**, set the `port`, `host`, `use_chat`, `api_key`, and `api_base` values.
+- For **API models**, set the `port`, `host`, `api_key`, and `api_base` values.
 
 To perform one-click evaluation, you need to configure a unified environment according to the instructions below, and then run 
 ```
-nohup bash one-click-evaluation.sh models--Qwen--Qwen2.5-32B-Instruct false 4 128 4096 512 > bench-Qwen2.5-32B-Instruct.log 2>&1 &
+nohup bash one-click-evaluation.sh Qwen/Qwen2.5-32B-Instruct false 4 128 4096 512 > bench-Qwen2.5-32B-Instruct.log 2>&1 &
 ```
 All evaluation results will be returned in JSON format named `$MODEL_results.json` under `src/scripts` path. If you prefer to evaluate separately, please continue reading and refer to the following separate instructions.
 
@@ -15,29 +15,13 @@ All evaluation results will be returned in JSON format named `$MODEL_results.jso
 cd src/scripts
 conda create -n benchmark python=3.10 -y && conda activate benchmark
 bash bfcl_setup.sh
-# taskbench
-pip install rouge_score
-# teval
-pip install mmengine
-# injecagent
-pip install nltk accelerate==0.26.0
+pip install rouge_score # taskbench
+pip install mmengine # teval
+pip install nltk accelerate==0.26.0 # injecagent
 ```
 
 ### Glaive Evaluation
-First, get the data by
-```
-cd src/scripts
-unzip glaive_data.zip
-```
-
-To evaluate with open-source models:
-```
-python glaive_eval.py --model xxx
-```
-To evaluate with closed-source models:
-```
-python glaive_eval.py --model xxx --is_api True
-```
+To evaluate with open-source models, run `python glaive_eval.py --model xxx --is_api False`. 
 The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/glaive`.
 
 ### RoTBench Evaluation
@@ -49,12 +33,7 @@ RoTBench uses three metrics to evaluate function calling:
 To evaluate with open-source models:
 ```
 cd src/scripts
-python rotbench_eval.py --model xxx
-```
-To evaluate with closed-source models:
-```
-cd src/scripts
-python rotbench_eval.py --model xxx --is_api True
+python rotbench_eval.py --model xxx --is_api Flse
 ```
 The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/rotbench`.
 
@@ -63,14 +42,7 @@ In SealTools, **Format ACC** assesses the correctness of the model's output stru
 
 To evaluate with open-source models:
 ```
-cd src/scripts
-python sealtools_eval.py --model xxx
-```
-
-To evaluate with closed-source models:
-```bash
-cd src/scripts
-python sealtools_eval.py --model xxx --is_api True
+cd src/scripts python sealtools_eval.py --model xxx --is_api False
 ```
 The scores and the original inference results along with bad cases will be saved under the path `src/data/eval_result/Seal-Tools`.
 
@@ -82,19 +54,10 @@ Unzip `src/data/sft_data/Taskbench_data` to get the data.
 To evaluate with open-source models:
 ```
 cd src/scripts
-python taskbench_eval.py --model xxx --data_path ../data/sft_data/TaskBench/taskbench_data_dailylifeapis.json
-python taskbench_eval.py --model xxx --data_path ../data/sft_data/TaskBench/taskbench_data_huggingface.json
-python taskbench_eval.py --model xxx --data_path ../data/sft_data/TaskBench/taskbench_data_multimedia.json
+python taskbench_eval.py --model xxx --is_api True
 ```
 
-To evaluate with closed-source models:
-```bash
-cd src/scripts
-python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/TaskBench/taskbench_data_dailylifeapis.json
-python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/TaskBench/taskbench_data_huggingface.json
-python taskbench_eval.py --model xxx --is_api True --data_path ../data/sft_data/TaskBench/taskbench_data_multimedia.json
-```
-The original inference results along with bad cases will be saved under the path `src/scripts`.
+The original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/TaskBench`.
 
 ### BFCL
 The evaluation framework for BFCL focuses on **accuracy** as the primary metric, assessing the model’s correctness in function invocation across various task scenarios, including Non-Live, Live, and multi-turn tasks.
@@ -105,7 +68,7 @@ conda create -n BFCL python=3.10 -y && conda activate BFCL
 bash bfcl_setup.sh
 ```
 
-For locally downloaded models, you need to add the corresponding processor in the handler mapping file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 108 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`. If you want to run the program in parallel, you can Modify the port in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/constant.py`
+For locally downloaded models, you need to add the corresponding processor in the handler mapping file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/handler_map.py`. If you want to add the `--max-model-len` parameter, you can add it around line 138 in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/local_inference/base_oss_handler.py`. If you want to run the program in parallel, you can Modify the `VLLM_PORT` in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/constants/eval_config.py`
 
 If you want to use your locally trained model, make sure that the model path name does not contain underscores ("_"). Otherwise, you will need to add code similar to the following around line 335 in `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/eval_checker/eval_runner(_helper)/py` to ensure that BFCL's processing does not cause conflicts:
 ```python
@@ -126,14 +89,14 @@ MODEL_METADATA_MAPPING = {
 }
 ```
 
-To evaluate with closed-resource models
+To evaluate with closed-resource models or open-resource models, run
 
 - **Inference**:
   You can set the `api_key` and `base_url` in the file `src/scripts/gorilla/berkeley-function-call-leaderboard/bfcl/model_handler/api_inference`.
   ```
   bfcl generate --model MODEL_NAME --test-category TEST_CATEGORY --num-threads 1
   # Example:
-  bfcl generate --model gpt-3.5-turbo-0125 --test-category parallel,multiple,simple,parallel_multiple,java,javascript,irrelevance,multi_turn --num-threads 1
+  bfcl generate --model gpt-3.5-turbo-0125 --test-category parallel,multiple,simple,parallel_multiple,java,javascript,irrelevance,live,multi_turn --num-threads 1
   ```
 
 - **Evaluation**:
@@ -141,13 +104,13 @@ To evaluate with closed-resource models
   bfcl evaluate --model gpt-3.5-turbo-0125
   ```
 
-The original inference results along with bad cases will be saved under the path `src/scripts/gorilla/berkeley-function-call-leaderboard/result`.
+The original inference results along with bad cases will be saved under the path `src/scripts/gorilla/berkeley-function-call-leaderboard/result`. And you can easily see the score in `src/scripts/gorilla/berkeley-function-call-leaderboard/score`.
   
 ### T-Eval
 T-Eval uses accuracy as the primary evaluation metric, measuring the model’s **correctness** across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
 
 Set Up the Environment
-```bash
+```
 cd src/scripts
 conda create -n teval python=3.10 -y && conda activate teval
 bash teval_setup.sh
@@ -160,14 +123,14 @@ mv ../../../teval_data.zip . && unzip teval_data.zip && mv teval_data data
 ```
 
 To evaluate with closed-resource models
-```bash
+```
 bash test_all_teval.sh api model_name display_name True
 # Example:
 bash test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620 True
 ```
 
 To evaluate with open-resource models
-```bash
+```
 # Inference (model_path, display_name, is_api)
 bash test_all_teval.sh model_path display_name False [tensor_parallel_size] [gpu_utilization] 
 # Evaluate (model_name, display_name, is_api, nums of gpu)
@@ -188,11 +151,8 @@ To evaluate with close-resource models, replace `model_type` with `GPT` or `Clau
 The results will be found in `src/scripts/InjecAgent_results`.
 
 ### SkyThought
-Use `pip install skythought` to set up the environment. Then run `one-click-sky.sh /your/model` to get the result.
-Modify the `tasks` in `one-click-sky.sh` to use your expected datasets. It contains math500, numina, numina_amc_aime, numina_math, numina_olympiads, taco, olympiadbench_math_en, aime24_sky, aime24, aime25, amc23, livecodebench_medium, livecodebench, livecodebench_easy, livecodebench_hard, arc_c, apps, mmlu, mmlu_pro, gsm8k, minervamath, gpqa_diamond.
-
-详细内容：
-## 
+Use `pip install skythought` to set up the environment. Then run `bash one-click-sky.sh` to get the result.
+Modify the `tasks` in `one-click-sky.sh` to use your expected datasets. It contains math500, numina, numina_amc_aime, numina_math, numina_olympiads, taco, olympiadbench_math_en, aime24_sky, aime24, aime25_I, aime25_II, amc23, livecodebench_medium, livecodebench, livecodebench_easy, livecodebench_hard, arc_c, apps, mmlu, mmlu_pro, gsm8k, minervamath, gpqa_diamond.
 
 1. Set up the environment
 
@@ -226,8 +186,6 @@ llm = LLM(**engine_kwargs, trust_remote_code=True, max_model_len=4096)
 ```
 
 `--task` contains: `math500`, `numina`, `numina_amc_aime`, `numina_math`, `numina_olympiads`, `taco`, `olympiadbench_math_en`, `aime24_sky`, `aime24`, `aime25`, `amc23`, `livecodebench_medium`, `livecodebench`, `livecodebench_easy`, `livecodebench_hard`, `arc_c`, `apps`, `mmlu`, `mmlu_pro`, `gsm8k`, `minervamath`, `gpqa_diamond`.
-
-备注：`numina` 耗时极长（数天），`taco` 貌似用不了，`livecodebench_medium` 貌似用不了，`aime25`分为['AIME2025-I', 'AIME2025-II']。
 
 ### StableToolBench
 1. Set up the environment
