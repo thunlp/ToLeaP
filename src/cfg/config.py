@@ -18,7 +18,6 @@ class Config:
 
     port = os.getenv("PORT")
     host = os.getenv("HOST")
-    use_chat = os.getenv("USE_CHAT") 
 
     use_llama = os.getenv("USE_LLAMA") == "True"
     llama_model_path = os.getenv("LLAMA_MODEL_PATH")
