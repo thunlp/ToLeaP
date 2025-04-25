@@ -21,8 +21,19 @@ pip install nltk accelerate==0.26.0 # injecagent
 ```
 
 ### Glaive Evaluation
-To evaluate with open-source models, run `python glaive_eval.py --model xxx --is_api False`. 
-The scores will be output in the terminal, and the original inference results along with bad cases will be saved under the path `src/scripts/benchmark_results/glaive`.
+
+1. **Download the Data**  
+   Run `python glaive2sharegpt.py` to transform the huggingface data [glaiveai/glaive-function-calling](https://huggingface.co/datasets/glaiveai/glaive-function-calling) into the ShareGPT format, which can be easily evaluated and fine-tuned (SFT).
+
+2. **Specify Data Location**  
+   In `glaive_eval.py`, specify the location of the transformed data by updating column 239 with the correct path.
+
+3. **Evaluation with Open-Source Models**  
+   To evaluate with open-source models, run the following command:
+   ```bash
+   python glaive_eval.py --model xxx --is_api False
+   ```
+   The evaluation scores will be displayed in the terminal, and the original inference results, along with any identified issues, will be saved under the directory `src/scripts/benchmark_results/glaive`.
 
 ### RoTBench Evaluation
 RoTBench uses three metrics to evaluate function calling: 
