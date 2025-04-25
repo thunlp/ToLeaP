@@ -1,3 +1,19 @@
+# Copyright 2023 open-compass/T-Eval
+# Modifications Copyright 2024 BodhiAgent
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import os
 import mmengine
 import click
@@ -11,12 +27,12 @@ from evaluator import (
 import json
 
 @click.command()
-@click.option("--model", type=str, help="模型名称,用于结果文件命名")
-@click.option("--dataset_path", type=str, help="数据集路径列表，格式: [path1,path2,...]")
+@click.option("--model", type=str, help="model name,used for naming the result file")
+@click.option("--dataset_path", type=str, help="dataset path list,format: [path1,path2,...]")
 @click.option("--out_dir", type=str, default="work_dirs/")
-@click.option("--out_name", type=str, help="输出文件名列表，格式: [name1,name2,...]")
-@click.option("--eval", type=str, help="评估类型列表，格式: [type1,type2,...]")
-@click.option("--prompt_type", type=str, help="提示类型列表，格式: [type1,type2,...]")
+@click.option("--out_name", type=str, help="output file name list,format: [name1,name2,...]")
+@click.option("--eval", type=str, help="evaluation type list,format: [type1,type2,...]")
+@click.option("--prompt_type", type=str, help="prompt type list,format: [type1,type2,...]")
 def main(
     model: str,
     dataset_path: str,
@@ -25,7 +41,7 @@ def main(
     eval: str,
     prompt_type: str,
 ):
-    # 解析列表形式的参数
+    # parse the list-format parameters
     def parse_list_arg(arg):
         if arg and arg.startswith('[') and arg.endswith(']'):
             return [item.strip() for item in arg[1:-1].split(',')]
@@ -36,11 +52,11 @@ def main(
     eval_types = parse_list_arg(eval)
     prompt_types = parse_list_arg(prompt_type)
 
-    # 验证参数长度一致
+    # verify the length of the parameters
     if len(set(map(len, [dataset_paths, out_names, eval_types, prompt_types]))) > 1:
-        raise ValueError("所有列表参数的长度必须相同")
+        raise ValueError("all list parameters must have the same length")
 
-    # 评估器映射
+    # evaluator mapping
     eval_mapping = {
         'instruct': InstructEvaluator,
         'plan': PlanningEvaluator,
@@ -72,13 +88,13 @@ def main(
         
         output_file_path = os.path.join(out_dir, curr_out_name)
         
-        # 检查inference结果是否存在
+        # check if the inference result exists
         if not os.path.exists(output_file_path):
             print(f"Error: Inference result not found at {output_file_path}")
             continue
 
-        # 评估
-        bert_score_model = "/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--sentence-transformers--all-mpnet-base-v2/snapshots/9a3225965996d404b775526de6dbfe85d3368642"
+        # evaluation
+        bert_score_model = "sentence-transformers/all-mpnet-base-v2"
         json_path = os.path.join(out_dir, f"{model}_{-1}_{'zh' if '_zh' in curr_dataset else ''}.json")
         
         evaluator = eval_mapping[curr_eval](
