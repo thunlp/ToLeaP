@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# This file is to run SkyThought benchmark easily.
+# Author: Zijun Song
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 # —— 在这里填入你要测试的模型路径 —— 
 models=(
   "/share_data/data2/workhome/chenhaotian/models/models--Team-ACE--ToolACE-2-8B/snapshots/91c918927e687541cc3f8dd4dbed42014efbc147"
