@@ -23,10 +23,6 @@
 
    Please run `bash teval.sh` to download the teval datasets and transform them into sharegpt format. There will be ? sharegpt format datasets named `teval*.json` stored under the folder `data/sft_data`.
 
-7. **ToolAlpaca**
-
-   Please run `bash toolalpaca.sh` to download the Toolalpaca datasets and transform them into sharegpt format. There will be 3 sharegpt format datasets named `toolalpaca_*.json` stored under the folder `data/sft_data`.
-
 8. **Toollens** 
    Please run `bash Toollens.sh` to download the Toollens datasets and transform them into sharegpt format. There will be ? sharegpt format datasets named `toolalpaca_*.json` stored under the folder `data/sft_data`.
 
