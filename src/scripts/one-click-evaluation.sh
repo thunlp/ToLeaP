@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# This file is to run this benchmark easily.
+# Author: Zijun Song
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 MODEL_PATH=$1
 IS_API=$2
 MODEL_NAME=$(basename $MODEL_PATH)  
