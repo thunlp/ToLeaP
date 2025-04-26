@@ -6,6 +6,9 @@ __pycache__/
 #ignore for  mac
 .DS_Store
 
+# ignore dataset create during benchmarking
+src/scripts/gorilla/
+src/scripts/T-Eval/
 
 # C extensions
 *.so

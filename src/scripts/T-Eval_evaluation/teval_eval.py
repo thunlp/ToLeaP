@@ -132,7 +132,7 @@ def main(
                     'rru': "ReasonRetrieveUnderstandEvaluator"
                 }
                 
-                bert_score_model = "/data3/models/hub/models--sentence-transformers--all-mpnet-base-v2/snapshots/9a3225965996d404b775526de6dbfe85d3368642"
+                bert_score_model = "sentence-transformers/all-mpnet-base-v2"
                 json_path = os.path.join(out_dir, f"{model.split('/')[-1]}_{-1}_{'zh' if '_zh' in curr_dataset else ''}.json")
 
                 
@@ -181,11 +181,10 @@ def infer(dataset, llm, out_dir, tmp_folder_name='tmp', test_num=1, batch_size=1
                 
                 batch_infer_ids = []; batch_infer_list = []
             except Exception as e:
-                print(f"处理批次时出错: {e}")
+                print(f"Error in process batch: {e}")
                 import traceback
                 traceback.print_exc()
     
-    # 加载结果
     results = {}
     file_list = os.listdir(os.path.join(out_dir, tmp_folder_name))
     for filename in file_list:

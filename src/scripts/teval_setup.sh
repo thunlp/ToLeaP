@@ -1,33 +1,22 @@
+set -e  
 
-set -e
-
-
-echo "Cloning T-Eval repository..."
-git clone https://github.com/open-compass/T-Eval.git
-
+echo "Creating T-Eval folder and moving files..."
+mkdir -p T-Eval
+mv T-Eval_evaluation/* T-Eval/
+rm -r T-Eval_evaluation
 
 cd T-Eval
 
+echo "Moving and unzipping teval_data.zip..."
+mv ../../data/teval_data.zip ./
+unzip teval_data.zip
+mv teval_data data
 
-echo "Installing T-Eval dependencies..."
-pip install -r requirements.txt
-pip install vllm==0.6.1
+echo "Setup complete!"
+echo ""
+echo "To evaluate with closed-resource models, run the following:"
+echo "bash test_all_teval.sh api <model_name> <display_name> True"
+echo ""
+echo "Example:"
+echo "bash test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620 True"
 
-echo "Cloning lagent repository..."
-git clone https://github.com/InternLM/lagent.git
-
-
-cd lagent
-echo "Installing lagent package..."
-pip install -e .
-
-cd ..
-
-if [ -d "../teval_data" ]; then
-    echo "Moving 'data' directory to T-Eval..."
-    mv ../teval_data ./data
-else
-    echo "'data' directory not found. Skipping move step."
-fi
-
-echo "Setup completed successfully!"

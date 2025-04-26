@@ -122,21 +122,15 @@ The original inference results along with bad cases will be saved under the path
 ### T-Eval
 T-Eval uses accuracy as the primary evaluation metric, measuring the model’s **correctness** across six task scenarios: planning, reasoning, retrieval, understanding, instruction, and review. Each task except review is assessed in two formats: JSON, which requires structured outputs containing tool names and parameters, and string (str), which allows more flexible textual responses.
 
-Set Up the Environment
+
+- **Set-up**: under src/scripts
 ```
-cd src/scripts
-conda create -n teval python=3.10 -y && conda activate teval
-bash teval_setup.sh
-```
-Move the files related to teval to the folder `T-Eval`
-```
-mkdir T-Eval && mv T-Eval_evaluation/* T-Eval/
-rm -r T-Eval_evaluation && cd T-Eval
-mv ../../../teval_data.zip . && unzip teval_data.zip && mv teval_data data
+bash Teval_setup.sh
 ```
 
 To evaluate with closed-resource models
 ```
+cd T-Eval
 bash test_all_teval.sh api model_name display_name True
 # Example:
 bash test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620 True
@@ -144,9 +138,9 @@ bash test_all_teval.sh api claude-3-5-sonnet-20240620 claude-3-5-sonnet-20240620
 
 To evaluate with open-resource models
 ```
-# Inference (model_path, display_name, is_api)
 bash test_all_teval.sh model_path display_name False [tensor_parallel_size] [gpu_utilization] 
-# Evaluate (model_name, display_name, is_api, nums of gpu)
+# Example:
+cd T-Eval
 bash test_all_teval.sh /models/Llama-3.1-8B-Instruct llama3 False 2
 ```
 The results will be found in `src/scripts/T-Eval/work_dirs`.

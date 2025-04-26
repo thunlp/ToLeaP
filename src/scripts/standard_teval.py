@@ -1,3 +1,20 @@
+# Copyright 2023 open-compass/T-Eval
+# Modifications Copyright 2024 BodhiAgent
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+
 import mmengine
 
 def format_percentage(value):
@@ -39,7 +56,7 @@ def format_results(result_path):
     return formatted_results
 
 def print_results(formatted_results):
-    """打印格式化后的结果"""
+    """print the result"""
     for category, values in formatted_results.items():
         print(f"{category}:")
         print(f"  String: {values['String']}")
