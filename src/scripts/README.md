@@ -148,7 +148,9 @@ The results will be found in `src/scripts/T-Eval/work_dirs`.
 ### InjecAgent Evaluation
 InjecAgent primarily assesses the model’s resilience under adversarial conditions, focusing on the validity of responses and the success rate of attacks. **Valid rate** measures the proportion of responses that are both non-empty and correctly formatted under attack scenarios. Attack success rate (ASR-valid) specifically quantifies the proportion of successful attacks within valid responses, offering a finer-grained evaluation of model vulnerability. **ASR-valid** is further categorized into specific attack types: **ASR-valid (Direct Harm)** evaluates the model’s susceptibility to direct harm attacks, where it executes malicious tool-based instructions; **ASR-valid (S1)** and **ASR-valid (S2)** respectively assess the success rates of the first and second stages of data-stealing attacks, corresponding to data extraction and data transmission. **ASR-valid (Data Stealing)** aggregates the results of S1 and S2 to provide a comprehensive measure of vulnerability to data theft, while **ASR-valid (Total)** encapsulates the overall attack success rate across all tested adversarial scenarios.  
 
-To evaluate with open-resource models
+First, download the data from https://github.com/uiuc-kang-lab/InjecAgent/tree/main/data, and put it under the `src/data` folder. 
+
+Second, To evaluate with open-resource models
 ```
 python injecagent_eval.py --model_type OpenModel --model_name xxx --use_cach
 ```
