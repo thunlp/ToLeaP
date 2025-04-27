@@ -1,3 +1,9 @@
+# This file is to set up the T-Eval environment easily.
+# Author: Boye Niu
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 set -e  
 
 echo "Creating T-Eval folder and moving files..."
