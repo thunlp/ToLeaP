@@ -1,1 +1,0 @@
-python src/data/mm_form.py --output_dir src/data/MMTool --dataset_key test_human_verified_filtered

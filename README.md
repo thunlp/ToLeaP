@@ -9,3 +9,12 @@
 
 An agent capable of learning how to learn and using what it learns.
 
+All the data are stored in data folder:
+
+|
+| -- data
+|   | -- rotbench
+|   | -- bfcl
+| -- scripts
+
+
