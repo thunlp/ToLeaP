@@ -14,6 +14,7 @@ All the data are stored in data folder:
 |
 | -- data
 |   | -- rotbench
+|   | -- sealtools
 |   | -- bfcl
 | -- scripts
 
