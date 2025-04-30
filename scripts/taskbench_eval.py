@@ -41,9 +41,9 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 @click.command()
 @click.option("--model", type=str, default="meta-llama/Llama-2-7b-chat-hf")
 @click.option("--data_paths", type=list, default=[
-    "../data/sft_data/TaskBench/taskbench_data_dailylifeapis.json",
-    "../data/sft_data/TaskBench/taskbench_data_huggingface.json",
-    "../data/sft_data/TaskBench/taskbench_data_multimedia.json",
+    "../data/TaskBench/taskbench_data_dailylifeapis.json",
+    "../data/TaskBench/taskbench_data_huggingface.json",
+    "../data/TaskBench/taskbench_data_multimedia.json",
 ])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=4)
@@ -69,7 +69,7 @@ def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, b
     for data_path in data_paths:
         # Initialize
         data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-        tool_path = "../data/sft_data/TaskBench/"
+        tool_path = "../data/TaskBench/"
         tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
         tool_desc = json.load(open(tool_desc_file, "r"))
         eval_data = json.load(open(data_path, "r"))
