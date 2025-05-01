@@ -210,12 +210,27 @@ class LLM:
 
         all_outputs = []
 
-        for i in tqdm(range(0, len(messages_batch), self.batch_size), desc="Processing batch"):
-            batch_messages = messages_batch[i:i+self.batch_size]
-            outputs = self.model.chat(batch_messages, self.gen_params, use_tqdm=False)
-            all_outputs.extend(outputs)
+        if self.is_api:
+            for batch_msgs in tqdm(range(0, len(messages_batch), self.batch_size), desc="Processing API batch"):
+                batch = messages_batch[batch_msgs:batch_msgs+self.batch_size]
+                batch_responses = []
+                for msgs in batch:
+                    response = self.client.chat.completions.create(
+                        model=self.model_path_or_name,
+                        messages=msgs,
+                        temperature=self.temperature,
+                        max_tokens=self.max_output_tokens,
+                    )
+                    batch_responses.append(response.choices[0].message.content)
+                all_outputs.extend(batch_responses)
+            return all_outputs
+        else:
+            for i in tqdm(range(0, len(messages_batch), self.batch_size), desc="Processing batch"):
+                batch_messages = messages_batch[i:i+self.batch_size]
+                outputs = self.model.chat(batch_messages, self.gen_params, use_tqdm=False)
+                all_outputs.extend(outputs)
                     
-        return self.parse_output_for_special_tokens(all_outputs)
+            return self.parse_output_for_special_tokens(all_outputs)
     
     def batch_generate_complete(self, test_cases: List[str]) -> List[Dict]:
         gen_params = SamplingParams(temperature=self.temperature, max_tokens=self.max_output_tokens)
@@ -252,5 +267,14 @@ class LLM:
         """
         if self.use_sharegpt_format:
             messages = self._create_messages_from_sharegpt(messages)
-        output = self.model.chat(messages, self.gen_params, use_tqdm=False)
+        if self.is_api:
+            output = self.client.chat.completions.create(
+                model=self.model_path_or_name,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_output_tokens,
+            )
+            output = output.choices[0].message.content
+        else:   
+            output = self.model.chat(messages, self.gen_params, use_tqdm=False)
         return self.parse_output_for_special_tokens(output)
