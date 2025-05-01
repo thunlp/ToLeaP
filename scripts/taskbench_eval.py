@@ -53,18 +53,15 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, batch_size: int, max_model_len: int, max_output_tokens: int):
     data_results = {}
     
-    if not is_api:
-        llm = LLM(
-            model=model, 
-            tensor_parallel_size=tensor_parallel_size, 
-            use_sharegpt_format=False,
-            max_input_tokens=max_model_len,
-            gpu_memory_utilization=0.9,
-            batch_size=batch_size, 
-            max_output_tokens=max_output_tokens
-        )
-    else:
-        llm = LLM(model=model)
+    llm = LLM(
+        model=model, 
+        tensor_parallel_size=tensor_parallel_size,
+        is_api=is_api,
+        use_sharegpt_format=False,
+        max_input_tokens=max_model_len,
+        batch_size=batch_size, 
+        max_output_tokens=max_output_tokens
+    )
 
     for data_path in data_paths:
         # Initialize
