@@ -44,22 +44,6 @@ def create_messages(conversation_data: List[Dict]) -> List[List[Dict]]:
 
 conf = Config()
 
-def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
-                   max_model_len: int, gpu_memory_utilization: float, batch_size: int, max_output_tokens: int) -> LLM:
-    if not is_api:
-        llm = LLM(
-                model=model,
-                tensor_parallel_size=tensor_parallel_size,
-                use_sharegpt_format=False,
-                max_input_tokens=max_model_len,
-                gpu_memory_utilization=gpu_memory_utilization,
-                batch_size=batch_size,
-                max_output_tokens=max_output_tokens
-        )
-    else:
-        llm = LLM(model=model, is_api=is_api)
-    return llm
-
 def match_square_bracket(text, pos_s):
     counter = -1           
     for i in range(pos_s+1,len(text)):
@@ -392,7 +376,6 @@ error_type_counts = {
 @click.command()
 @click.option("--model", type=str, default="/bjzhyai03/workhome/songzijun/huggingface/llama3.1_8b_instruct")
 @click.option("--datasets", type=list, default=["clean", "heavy", "medium", "slight", "union"])
-# @click.option("--datasets", type=list, default=["clean"])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=4)
 @click.option("--batch_size", type=int, default=128)
@@ -417,21 +400,29 @@ def main(
     llm = None
     need_llm = False
     for dataset in datasets:
-        output_path = f"benchmark_results/rotbench/{model_name}/{'api' if is_api else 'hf'}_{model_name}_rotbench_{dataset}_results.json"
+        output_path = f"../results/rotbench/{model_name}/{model_name}_rotbench_{dataset}_results.json"
         if not os.path.exists(output_path):
             need_llm = True
             break
     
     if need_llm:
-        llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size, max_output_tokens)
+        llm = LLM(
+            model=model, 
+            tensor_parallel_size=tensor_parallel_size,
+            is_api=is_api,
+            use_sharegpt_format=False,
+            max_input_tokens=max_model_len,
+            batch_size=batch_size, 
+            max_output_tokens=max_output_tokens
+        )
 
     data_results = {}
     for dataset in datasets:
-        raw_data_path = f"../../src/data/input_data/RoTBench/First_turn/{dataset}.json"
-        # print(f"Loading data from {raw_data_path}")
+        raw_data_path = f"../data/rotbench/First_Turn/{dataset}.json"
+        print(f"Loading data from {os.path.abspath(raw_data_path)}")
         with open(raw_data_path, "r", encoding='utf-8') as f:
             eval_data = json.load(f)
-        # print(len(eval_data))
+
         global cata_list
         global check_list 
         global error_cases
@@ -447,36 +438,27 @@ def main(
         }
 
         ### Run inference
-        if is_api:
-            output_path = f"benchmark_results/rotbench/{model_name}/api_{model_name}_rotbench_{dataset}_results.json"
-        else: 
-            output_path = f"benchmark_results/rotbench/{model_name}/hf_{model_name}_rotbench_{dataset}_results.json"
-        if not os.path.exists(f"benchmark_results/rotbench/{model_name}"):
-            os.makedirs(f"benchmark_results/rotbench/{model_name}")
-        # print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
+        output_path = f"../results/rotbench/{model_name}/{dataset}_results.json"
+        if not os.path.exists(f"../results/rotbench/{model_name}"):
+            os.makedirs(f"../results/rotbench/{model_name}")
+        print(f"The raw result will be saved to {os.path.abspath(output_path)}...")
     
         def run_inference() -> List:
-            if os.path.exists(output_path): # if exists
+            if os.path.exists(output_path):
                 with open(output_path, "r") as f:
                     results = json.load(f)
-            else: # if not 
-                if not conf.use_chat: # hf batch generate
+            else:
+                if not is_api:
                     results = llm.batch_generate_complete(
                         [(ed["conversations"][0]["value"] + ed["conversations"][1]["value"]) for ed in eval_data]
                     )
-                else:  # vllm batch generate
+                else:
                     messages = create_messages(eval_data)
-                    if not is_api:
-                        with llm.start_server():
-                            results = llm.batch_generate_chat(messages)
-                    else:
-                        # print("You are using batch_generate_chat to execute inference")
-                        results = llm.batch_generate_chat(messages)
+                    results = llm.batch_generate_chat(messages)
                 with open(output_path, "w") as f:
                     json.dump(results, f, indent=4)
-            return results
         
-        results = run_inference()
+        run_inference()
 
         ### Evaluation
         with open(output_path, encoding="utf-8") as f:
@@ -484,14 +466,10 @@ def main(
         max_len = len(test_data)
         general_eval(test_data, eval_data)
 
-        # print("Error Type Statistics: ")
-        # for error_type, count in error_type_counts.items():
-        #     print(f"{error_type}: {count}")
-
-        error_type_count_path = f"benchmark_results/rotbench/{model_name}/error_type_counts_{dataset}.json"
+        error_type_count_path = f"../results/rotbench/{model_name}/error_type_counts_{dataset}.json"
         with open(error_type_count_path, "w", encoding="utf-8") as f:
             json.dump(error_type_counts, f, ensure_ascii=False, indent=4)
-        # print(f"Error type statistics have been saved to {error_type_count_path}.")
+        print(f"Error type statistics have been saved to {os.path.abspath(error_type_count_path)}.")
 
         bad_cases = []
         for idx, errors in error_cases.items():
@@ -504,11 +482,11 @@ def main(
             }
             bad_cases.append(bad_case)
         
-        bad_cases_path = f"benchmark_results/rotbench/{model_name}/bad_cases_{dataset}.jsonl"
+        bad_cases_path = f"../results/rotbench/{model_name}/bad_cases_{dataset}.jsonl"
         with open(bad_cases_path, "w", encoding="utf-8") as f:
             for case in bad_cases:
                 f.write(json.dumps(case, ensure_ascii=False) + "\n")
-        # print(f"The error cases have been saved to {bad_cases_path}.")
+        print(f"The error cases have been saved to {os.path.abspath(bad_cases_path)}.")
 
         data_results[f"{dataset}"] = {
             "Tool Selection": "{:.4f}".format(check_list[0][0] / max_len),

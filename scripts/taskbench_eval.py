@@ -13,20 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import click
 import json
 from typing import List, Dict
 from rouge_score import rouge_scorer
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-print(current_dir)
-utils_dir = os.path.join(current_dir, '..')
-print(utils_dir)
-sys.path.append(utils_dir)
-
-from benchmark_utils.llm import LLM, extract_first_json
+from utils.llm import LLM, extract_first_json
 
 def create_messages(conversation_data: Dict) -> List[Dict]:
     messages = []
@@ -39,11 +32,11 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
     return messages
 
 @click.command()
-@click.option("--model", type=str, default="meta-llama/Llama-2-7b-chat-hf")
+@click.option("--model", type=str, default="gpt-3.5-turbo")
 @click.option("--data_paths", type=list, default=[
-    "../data/TaskBench/taskbench_data_dailylifeapis.json",
-    "../data/TaskBench/taskbench_data_huggingface.json",
-    "../data/TaskBench/taskbench_data_multimedia.json",
+    "../data/taskbench/taskbench_data_dailylifeapis.json",
+    "../data/taskbench/taskbench_data_huggingface.json",
+    "../data/taskbench/taskbench_data_multimedia.json",
 ])
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=4)
@@ -61,20 +54,20 @@ def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, b
         max_input_tokens=max_model_len,
         batch_size=batch_size, 
         max_output_tokens=max_output_tokens
-    )
+     )
 
     for data_path in data_paths:
         # Initialize
         data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-        tool_path = "../data/TaskBench/"
+        tool_path = "../data/taskbench/"
         tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
         tool_desc = json.load(open(tool_desc_file, "r"))
         eval_data = json.load(open(data_path, "r"))
         labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
 
-        os.makedirs("benchmark_results/taskbench", exist_ok=True)
-        output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
-        parsed_output_path = f"benchmark_results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
+        os.makedirs("../results/taskbench", exist_ok=True)
+        output_path = f"../results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
+        parsed_output_path = f"../results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
 
         # Run inference
         def run_inference():

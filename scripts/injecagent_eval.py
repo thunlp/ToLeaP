@@ -19,49 +19,35 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import os
 import json
-import time
 import argparse
-import transformers
-import torch 
 from tqdm import tqdm
 from typing import List, Dict
 
-from InjecAgent_files.prompts.agent_prompts import PROMPT_DICT
-from InjecAgent_files.models import MODELS
-from InjecAgent_files.InjecAgent_utils import get_tool_dict, get_simulated_attacker_tool_response, get_score
-from InjecAgent_files.output_parsing import evaluate_output_prompted
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-utils_dir = os.path.join(current_dir, '..')
-sys.path.append(utils_dir)
-
-from utils.llm import LLM
+from benchmark.injecagent.prompts.agent_prompts import PROMPT_DICT
+from benchmark.injecagent.models import MODELS
+from benchmark.injecagent.InjecAgent_utils import get_tool_dict, get_simulated_attacker_tool_response, get_score
+from benchmark.injecagent.output_parsing import evaluate_output_prompted
 
 ### Parse the params
 def define_arguments_prompted(parser):
-    parser.add_argument("--model_type", default='TogetherAI', help="Type of the model to evaluate")
-    parser.add_argument("--model_name", default='/bjzhyai03/workhome/chenhaotian/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659', help="Name of the model to evaluate")
+    parser.add_argument("--model_type", default='OpenModel', help="Type of the model to evaluate")
+    parser.add_argument("--model_name", default='meta-llama/Llama-3.1-8B-Instruct', help="Name of the model to evaluate")
     parser.add_argument("--setting", default='base', choices=['base', 'enhanced'], help="base or enhanced setting")
     parser.add_argument("--prompt_type", default='InjecAgent',choices=['InjecAgent', 'hwchase17_react'], help="prompt type")
     parser.add_argument("--only_first_step", default=False, action='store_true', help="Only predict the first step")
     parser.add_argument("--use_cache", default=False, action='store_true', help="Use existing dataset")
     parser.add_argument("--only_get_score", default=False, action='store_true', help="Only get score without inference")
+    parser.add_argument("--tensor_parallel_size", default=1)
+    parser.add_argument("--max_model_len", default=4096)
+    parser.add_argument("--gpu_memory_utilization", default=0.9)
+    parser.add_argument("--batch_size", default=128)
+
     
-def define_arguments_finetuned(parser):
-    parser.add_argument("--model_name", help="Name of the model to evaluate", required=True)
-    parser.add_argument("--setting", choices=['base', 'enhanced'], help="base or enhanced setting", required=True)
-    parser.add_argument("--prompt_type", choices=['InjecAgent', 'hwchase17_react'], help="prompt type", required=True)
-    parser.add_argument("--only_first_step", action='store_true', help="Only predict the first step")
-    
-def parse_arguments(agent_type=None):
+def parse_arguments():
     parser = argparse.ArgumentParser()
-    if agent_type == "prompted":
-        define_arguments_prompted(parser)
-    elif agent_type == "finetuned":
-        define_arguments_finetuned(parser)
+    define_arguments_prompted(parser)
     args = parser.parse_args()
     params = args.__dict__
     return params
@@ -95,21 +81,21 @@ def main(params):
     if params['model_type'] == 'OpenModel':
         model_class = MODELS[params['model_type']](
             model=params['model_name'],
-            tensor_parallel_size=4,
+            tensor_parallel_size=params['tensor_parallel_size'],
             use_sharegpt_format=False,
-            max_input_tokens=4096,
-            gpu_memory_utilization=0.8,
-            batch_size=128
+            max_input_tokens=params['max_model_len'],
+            gpu_memory_utilization=params['gpu_memory_utilization'],
+            batch_size=params['batch_size']
         )
     else:
         model_class = MODELS[params['model_type']](params)
     system_prompt, user_prompt = PROMPT_DICT[params['prompt_type']]
-    output_dir = f"./InjecAgent_results/prompted_{params['model_type']}_{os.path.basename(params['model_name'])}_{params['prompt_type']}"
-    # print(f"The results will be saved to {os.path.abspath(output_dir)}")
+    output_dir = f"../results/injecagent/{os.path.basename(params['model_name'])}_{params['prompt_type']}"
+    print(f"The results will be saved to {os.path.abspath(output_dir)}")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    data_dir = '../data/sft_data/InjecAgent'
-    # print(f"Loading data from {os.path.abspath(data_dir)}")
+    data_dir = '../data/injecagent'
+    print(f"Loading data from {os.path.abspath(data_dir)}")
 
     tool_dict = get_tool_dict()
     
@@ -185,6 +171,6 @@ def main(params):
     print(json.dumps(scores)) 
 
 if __name__ == "__main__":
-    params = parse_arguments(agent_type="prompted")
+    params = parse_arguments()
     main(params)
 

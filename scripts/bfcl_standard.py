@@ -1,3 +1,9 @@
+# This file is to transform the BFCL rsults into clean format.
+# Author: Zijun Song
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 import re
 import json
 

@@ -9,25 +9,9 @@ import click
 import json
 from typing import List, Dict
 from cfg.config import Config
-from benchmark_utils.llm import LLM
+from utils.llm import LLM
 
 conf = Config()
-
-def initialize_llm(model: str, is_api: bool, conf: Config, tensor_parallel_size: int,
-                   max_model_len: int, gpu_memory_utilization: float, batch_size: int) -> LLM:
-    if not is_api:
-        llm = LLM(
-                model=model,
-                tensor_parallel_size=tensor_parallel_size,
-                use_sharegpt_format=False,
-                max_input_tokens=max_model_len,
-                gpu_memory_utilization=gpu_memory_utilization,
-                batch_size=batch_size,
-                max_output_tokens=512
-        )
-    else:
-        llm = LLM(model=model, is_api=is_api)
-    return llm
 
 def extract_first_json(text):
     # Find the first occurrence of { or [
@@ -228,9 +212,10 @@ def validate_prediction(pred_json):
 @click.option("--model", type=str, default="/home/test/test03/models/Meta-Llama-3.1-8B-Instruct")
 @click.option("--is_api", type=bool, default=False)
 @click.option("--tensor_parallel_size", type=int, default=4)
-@click.option("--batch_size", type=int, default=2048)
+@click.option("--batch_size", type=int, default=1024)
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
 @click.option("--max_model_len", type=int, default=4096)
+@click.option("--max_output_tokens", type=int, default=512)
 def main(
     model: str, 
     is_api: bool, 
@@ -238,21 +223,30 @@ def main(
     batch_size: int,
     max_model_len: int,
     gpu_memory_utilization: float,
+    max_output_tokens: int,
     ):
     ### Setup
     model_name = os.path.basename(model)
 
-    raw_data_path = f"glaive-function-calling-sharegpt-v2.json"
+    raw_data_path = f"../data/glaive/glaive-function-calling-sharegpt.json"
     with open(raw_data_path, "r", encoding='utf-8') as f:
         eval_data = json.load(f)
 
     ### Run inference
-    output_path = f"benchmark_results/glaive/{model_name}/{model_name}_glaive_results.json"
-    if not os.path.exists(f"benchmark_results/glaive/{model_name}"):
-        os.makedirs(f"benchmark_results/glaive/{model_name}")
+    output_path = f"../results/glaive/{model_name}/glaive_results.json"
+    if not os.path.exists(f"../results/glaive/{model_name}"):
+        os.makedirs(f"../results/glaive/{model_name}")
 
     if not os.path.exists(output_path):
-        llm = initialize_llm(model, is_api, conf, tensor_parallel_size, max_model_len, gpu_memory_utilization, batch_size)
+        llm = LLM(
+            model=model, 
+            tensor_parallel_size=tensor_parallel_size,
+            is_api=is_api,
+            use_sharegpt_format=False,
+            max_input_tokens=max_model_len,
+            batch_size=batch_size, 
+            max_output_tokens=max_output_tokens
+        )
 
     def run_inference() -> List:
         if os.path.exists(output_path): # if exists
@@ -277,7 +271,7 @@ def main(
     
     print("*"*10 + "EVALUATION" + "*"*10)
     print(model)
-    output_dir = f"benchmark_results/glaive/{model_name}"
+    output_dir = f"../results/glaive/{model_name}"
     print(evaluate_function_calls(test_data, eval_data, output_dir))
 
 if __name__ == "__main__":

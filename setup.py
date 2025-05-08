@@ -1,14 +1,14 @@
 from setuptools import setup, find_namespace_packages
 
 setup(
-    name="BodhiAgent",
+    name="ToLeap",
     version="0.1.0",
     author="Haotian Chen",
     author_email="htchen@tsinghua.edu.cn",
-    description="An agent capable of learning how to learn",
+    description="A Tool Learning Platform",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/Hytn/BodhiAgent",
+    url="https://github.com/Hytn/ToLeap",
     packages=find_namespace_packages(where='src'),
     package_dir={'': 'src'},
     classifiers=[

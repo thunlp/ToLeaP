@@ -6,15 +6,9 @@
 # Copyright (c) THUNLP, Tsinghua University. All rights reserved.
 # See LICENSE file in the project root for license information.
 
-# —— 在这里填入你要测试的模型路径 —— 
 models=(
-  "/share_data/data2/workhome/chenhaotian/models/models--Team-ACE--ToolACE-2-8B/snapshots/91c918927e687541cc3f8dd4dbed42014efbc147"
-  "/share_data/data2/workhome/chenhaotian/models/hub/models--Qwen--Qwen2-1.5B-Instruct/snapshots/ba1cf1846d7df0a0591d6c00649f57e798519da8"
-  "/share_data/data2/workhome/chenhaotian/models/models--meta-llama--Llama-2-7b-chat-hf/snapshots/f5db02db724555f92da89c216ac04704f23d4590"
-  "/share_data/data2/workhome/chenhaotian/models/models--meta-llama--Llama-2-7b-hf/snapshots/01c7f73d771dfac7d292323805ebc428287df4f9"
-  "/share_data/data2/workhome/chenhaotian/models/models--meta-llama--Llama-2-13b-hf/snapshots/5c31dfb671ce7cfe2d7bb7c04375e44c55e815b1"
-  "/share_data/data2/workhome/chenhaotian/models/models--meta-llama--Llama-2-13b-chat-hf/snapshots/a2cb7a712bb6e5e736ca7f8cd98167f81a0b5bd8"
-  # 如果有新模型，直接在这里加一行
+  "meta/Llama-3.2-1B"
+  "meta/Llama-3.1-8B-Instruct"
 )
 
 # —— 在这里填入你要测试的任务名称 —— 
@@ -44,7 +38,7 @@ tasks=(
 )
 
 backend="vllm"
-backend_args="tensor_parallel_size=4"
+backend_args="tensor_parallel_size=1"
 
 for model in "${models[@]}"; do
   for task in "${tasks[@]}"; do
