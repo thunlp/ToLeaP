@@ -1,13 +1,20 @@
+# This file is to run stabletoolbench evaluation.
+# Author: Zijun Song
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 import json
 import re
 import os
 import argparse
 from openai import OpenAI
+from tqdm import tqdm
 
 # Initialize the API client
 client = OpenAI(
-    api_key='your-api-key', # Replace with your API key
-    base_url="your-base-url",
+    api_key='sk-', # Replace with your API key
+    base_url="https:",
 )
 
 def judge_solution(result):
@@ -26,6 +33,17 @@ Please provide your result strictly in the following format:
 <answer_status>[Solved/Unsolved]</answer_status>
 <reason>[Your explanation]</reason>
     """.strip()
+
+# Guidelines:
+# 1. If the answer contains an apology or is not a positive/straightforward response for the given query, return "Unsolved".
+# 2. If the answer is positive/straightforward for the given query, then:
+#    2.1. If the answer is insufficient to determine whether the query is solved, return "Unsure".
+#    2.2. If you are confident that the answer is sufficient, return "Solved" or "Unsolved" accordingly.
+   
+# Please provide your result strictly in the following format:
+# <query>[Query]</query>
+# <answer_status>[Solved/Unsure/Unsolved]</answer_status>
+# <reason>[Your explanation]</reason>
 
     response = client.chat.completions.create(
         model="deepseek-r1",
@@ -76,16 +94,17 @@ def main(inference_result, evaluation_result, eval_model):
     solved_count = 0
     total_tasks = len(data)
 
-    for idx, result in enumerate(data):
+    for idx, result in tqdm(enumerate(data), total=len(data)):
         api_response = judge_solution(result)
         evaluation = extract_fields(api_response)
         evaluation_results[idx] = evaluation
 
         if evaluation.get("answer_status") == "Solved":
             solved_count += 1
-        print(f"Record {idx}: {evaluation}")
+        print(f"\nRecord {idx}: {evaluation}")
 
     solved_percentage = (solved_count / total_tasks) * 100 if total_tasks else 0
+    print(f"----- {args.model_name} on {args.group} dataset -----")
     print(f"\nSolved: {solved_count} out of {total_tasks} tasks ({solved_percentage:.1f}%).")
 
     with open(evaluation_result, 'w', encoding='utf-8') as f:
