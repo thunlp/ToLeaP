@@ -84,7 +84,6 @@ class LLM:
         # env initialization
         self.port = conf.port
         self.host = conf.host
-        self.api_key = conf.api_key
         # model initialization
         self.model_path_or_name = model
         self.gpu_memory_utilization = gpu_memory_utilization
@@ -108,12 +107,14 @@ class LLM:
         )
 
         if self.is_api:
-            self.client = OpenAI(api_key=self.api_key, base_url=conf.api_base)
+            self.client = OpenAI(api_key=conf.api_key, base_url=conf.api_base)
+            self.model = self.model_path_or_name
         else:
             self.model = VLLM_LLM(
                 model=self.model_path_or_name,
                 tensor_parallel_size=self.tensor_parallel_size,
-                max_model_len=self.max_input_tokens
+                max_model_len=self.max_input_tokens,
+                trust_remote_code=True
             )
             if self.special_tokens:
                 # flatten the list of tuples
@@ -210,6 +211,16 @@ class LLM:
 
         all_outputs = []
 
+        for i in tqdm(range(0, len(messages_batch), self.batch_size), desc="Processing batch"):
+            batch_messages = messages_batch[i:i+self.batch_size]
+            outputs = self.model.chat(batch_messages, self.gen_params, use_tqdm=False)
+            all_outputs.extend(outputs)
+                    
+        return self.parse_output_for_special_tokens(all_outputs)
+    
+    def batch_generate_complete(self, messages_batch: List[str]) -> List[Dict]:
+        gen_params = SamplingParams(temperature=self.temperature, max_tokens=self.max_output_tokens)
+        all_outputs = []
         if self.is_api:
             for batch_msgs in tqdm(range(0, len(messages_batch), self.batch_size), desc="Processing API batch"):
                 batch = messages_batch[batch_msgs:batch_msgs+self.batch_size]
@@ -229,17 +240,8 @@ class LLM:
                 batch_messages = messages_batch[i:i+self.batch_size]
                 outputs = self.model.chat(batch_messages, self.gen_params, use_tqdm=False)
                 all_outputs.extend(outputs)
-                    
+
             return self.parse_output_for_special_tokens(all_outputs)
-    
-    def batch_generate_complete(self, test_cases: List[str]) -> List[Dict]:
-        gen_params = SamplingParams(temperature=self.temperature, max_tokens=self.max_output_tokens)
-        all_outputs = []
-        for i in tqdm(range(0, len(test_cases), self.batch_size), desc="Processing batch"):
-            batch_messages = test_cases[i:i+self.batch_size]
-            outputs = self.model.generate(batch_messages, gen_params, use_tqdm=False)
-            all_outputs.extend([output.outputs[0].text for output in outputs])
-        return all_outputs
 
     def single_generate_complete(
         self, 
@@ -254,7 +256,7 @@ class LLM:
 
     def single_generate_chat(
         self,
-        messages: List[Dict],
+        messages: Dict,
     ) -> str:
         """Generate a single chat response.
         
@@ -267,6 +269,7 @@ class LLM:
         """
         if self.use_sharegpt_format:
             messages = self._create_messages_from_sharegpt(messages)
+        # print(messages)
         if self.is_api:
             output = self.client.chat.completions.create(
                 model=self.model_path_or_name,
@@ -275,6 +278,8 @@ class LLM:
                 max_tokens=self.max_output_tokens,
             )
             output = output.choices[0].message.content
+            return output
         else:   
-            output = self.model.chat(messages, self.gen_params, use_tqdm=False)
-        return self.parse_output_for_special_tokens(output)
+            resp = self.model.chat(messages, self.gen_params, use_tqdm=False)
+            return resp[0].outputs[0].text
+        

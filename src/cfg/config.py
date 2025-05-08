@@ -11,9 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    api_key = os.getenv("API_KEY")
-    api_model = os.getenv("API_MODEL")
-    api_base = os.getenv("DATABASE_URL")
+    api_key = os.getenv("OPENAI_API_KEY")
+    api_base = os.getenv("OPENAI_API_BASE")
     data_folder_path = os.getenv("DATA_FOLDER_PATH")
 
     port = os.getenv("PORT")
