@@ -1,3 +1,9 @@
+# This file is to run stabletoolbench evaluation easily.
+# Author: Zijun Song
+# Date: 2025-04
+# Copyright (c) THUNLP, Tsinghua University. All rights reserved.
+# See LICENSE file in the project root for license information.
+
 export TOOLBENCH_KEY="your-toolbench-key"
 export PYTHONPATH=./
 export OPEN_MODEL="baichuan-inc/Baichuan2-7B-Chat"
