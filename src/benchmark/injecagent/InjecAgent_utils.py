@@ -22,7 +22,7 @@
 import json
 import os
 import re
-from InjecAgent_files.prompts.generation_prompts import SYSTEM_MESSAGE, DS_ATTACKER_TOOL_RESPONSE_GEN_MESSAGE, EXAMPLE
+from benchmark.injecagent.prompts.generation_prompts import SYSTEM_MESSAGE, DS_ATTACKER_TOOL_RESPONSE_GEN_MESSAGE, EXAMPLE
 from openai import OpenAI
 
 client = OpenAI(
@@ -137,8 +137,8 @@ def transform_tool_format_gpt(tool):
 
 def get_tool_dict(gpt_format=False):
     tool_dict = {}
-    data_tools_path = "../data/sft_data/InjecAgent/tools.json"
-    # print(f"Getting tool dict from {os.path.abspath(data_tools_path)}")
+    data_tools_path = "../data/injecagent/tools.json"
+    print(f"Getting tool dict from {os.path.abspath(data_tools_path)}")
     with open(data_tools_path, 'r') as f:
         toolkits = json.load(f)
         for toolkit in toolkits:
@@ -158,7 +158,7 @@ def extract_content(text):
     return matches
 
 def get_simulated_attacker_tool_response(attacker_tool, attacker_tool_parameters, tool_dict):
-    file_name = '../../src/data/sft_data/InjecAgent/attacker_simulated_responses.json'
+    file_name = '../data/injecagent/attacker_simulated_responses.json'
     print(os.path.abspath(file_name))
     with open(file_name, 'r') as f:
         response_dict = json.load(f)
