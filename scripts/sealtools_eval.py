@@ -68,6 +68,7 @@ def load_eval_data(input_data_path: str) -> List[Dict]:
 @click.option("--gpu_memory_utilization", type=float, default=0.8)
 @click.option("--max_model_len", type=int, default=4096)
 @click.option("--max_output_tokens", type=int, default=512)
+@click.option("--model_name", type=str)
 def main(
     model: str, 
     dataset_name_list: list[str], 
@@ -81,8 +82,9 @@ def main(
     max_model_len: int,
     gpu_memory_utilization: float,
     max_output_tokens: int,
+    model_name: str,
     ):
-    model_name = os.path.basename(model)
+    # model_name = os.path.basename(model)
     create_directories(eval_data_path, eval_result_path, model_name)
     llm = LLM(
         model=model, 
@@ -136,5 +138,4 @@ def main(
 
 if __name__ == "__main__":
     main()
-
 
