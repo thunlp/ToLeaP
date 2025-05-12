@@ -126,8 +126,8 @@ def evaluate_function_calls(test_data: List[str], eval_data: List[dict], output_
             )
             continue
 
-        print("ground-truth:", gt_data)
-        print("prediction:", pred_data)
+        # print("ground-truth:", gt_data)
+        # print("prediction:", pred_data)
         
         if pred_data["name"] == gt_data["name"]:
             stats["function_correct"] += 1
@@ -174,9 +174,9 @@ def evaluate_function_calls(test_data: List[str], eval_data: List[dict], output_
     with open(invalid_pred_path, "w", encoding="utf-8") as f:
         json.dump(invalid_pred_data, f, indent=4)
 
-    print(stats["total"])
-    print(stats["function_correct"])
-    print(stats["argument_name_correct"])
+    # print(stats["total"])
+    # print(stats["function_correct"])
+    # print(stats["argument_name_correct"])
 
     return {
         "function_accuracy": round(stats["function_correct"] / stats["total"], 4) if stats["total"] > 0 else 0.0,
