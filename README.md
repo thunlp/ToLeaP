@@ -3,9 +3,14 @@
 ## Set up the environment
 ```
 conda create -n toleap python=3.10 -y && conda activate toleap
-git clone https://github.com/Hytn/ToLeaP.git && cd ToLeap/scripts
+git clone https://github.com/Hytn/ToLeaP.git && cd ToLeap
+pip install -e .
 
+cd scripts
 pip install vllm==0.6.5
+pip install rouge_score # taskbench
+pip install mmengine # teval
+pip install nltk accelerate # injecagent
 bash ../src/benchmark/bfcl/bfcl_setup.sh
 ```
 ## Download the data
@@ -48,7 +53,7 @@ unzip teval.zip
 rm teval.zip
 ```
 
-### injecagent
+### InjecAgent
 ```
 cd src/benchmark/injecagent
 bash injecagent.sh
@@ -91,7 +96,9 @@ cd ..
 If you want to perform one-click evaluation, run:
 ```
 cd scripts
-bash one-click-evaluation.sh
+# bash one-click-evaluation.sh model_path is_api gpu_num batch_size input output display_name
+bash one-click-evaluation.sh meta-llama/Llama-3.1-8B-Instruct false 1 256 4096 512 llama3.1
+
 ```
 If you prefer to evaluate each benchmark separately, follow the instructions below.
 
