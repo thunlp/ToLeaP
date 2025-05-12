@@ -43,7 +43,8 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
 @click.option("--batch_size", type=int, default=128)
 @click.option("--max_model_len", type=int, default=4096)
 @click.option("--max_output_tokens", type=int, default=512)
-def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, batch_size: int, max_model_len: int, max_output_tokens: int):
+@click.option("--model_name", type=str)
+def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, batch_size: int, max_model_len: int, max_output_tokens: int, model_name:str):
     data_results = {}
     
     llm = LLM(
@@ -66,8 +67,8 @@ def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, b
         labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
 
         os.makedirs("../results/taskbench", exist_ok=True)
-        output_path = f"../results/taskbench/{model.split('/')[-1]}_{data_split}_results.json"
-        parsed_output_path = f"../results/taskbench/{model.split('/')[-1]}_{data_split}_parsed_results.json"
+        output_path = f"../results/taskbench/{model_name}_{data_split}_results.json"
+        parsed_output_path = f"../results/taskbench/{model_name}_{data_split}_parsed_results.json"
 
         # Run inference
         def run_inference():
