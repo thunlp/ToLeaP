@@ -9,6 +9,7 @@ __pycache__/
 # ignore dataset create during benchmarking
 src/scripts/gorilla/
 src/scripts/T-Eval/
+src/benchmark/apibank/init_database/
 
 # C extensions
 *.so
