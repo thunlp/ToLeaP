@@ -1,5 +1,7 @@
 # ToLeaP：A **To**ol **Lea**rning **P**latform
 
+We investigate the tool learning ability of 41 prevalent LLMs by reproducing 33 benchmarks and enabling one-click evaluation for seven of them, forming a **To**ol **Lea**rning **P**latform named **ToLeaP**. Our motivation is to deepen insights into current work and thus facilitate foresight into future directions in the tool learning domain. ToLeaP comprises 7 out of 33 benchmarks and possesses the functionality that takes an LLM as input and outputs the values of all 64 evaluation metrics proposed by the benchmarks.
+
 ## Set up the environment
 ```
 conda create -n toleap python=3.10 -y && conda activate toleap
