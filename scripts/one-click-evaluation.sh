@@ -71,8 +71,6 @@ export OPENAI_API_KEY="your-open-api-kei"
 python injecagent_eval.py \
     --model_type $MODEL_TYPE \
     --model_name $MODEL_PATH \
-    --tensor_parallel_size $GPU_NUM \
-    --batch_size $BATCH_SIZE \
     --use_cach | grep -oP '\{.*\}' >> $OUTPUT_FILE
 
 echo "********** doing evaluation by $MODEL_NAME on T-Eval benchmark **********"

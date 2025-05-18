@@ -129,12 +129,12 @@ def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, b
 
         rouge_1, rouge_2, name_f1, t_f1, v_f1, link_f1 = evaluate(parsed_results, labels, data_split, tool_desc)
         data_results[f"{data_split}"] = {
-                "rouge_1": rouge_1,
-                "rouge_2": rouge_2,
-                "name_f1": name_f1,
-                "t_f1": t_f1,
-                "v_f1": v_f1,
-                "link_f1": link_f1
+            "rouge_1": round(rouge_1  * 100, 2),
+            "rouge_2": round(rouge_2  * 100, 2),
+            "name_f1": round(name_f1 * 100, 2),
+            "t_f1":   round(t_f1   * 100, 2),
+            "v_f1":   round(v_f1   * 100, 2),
+            "link_f1":round(link_f1* 100, 2),
         }
     print(json.dumps(data_results))
     
