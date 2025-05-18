@@ -775,11 +775,22 @@ def main(
                  check_list.append([0] * (len(cata_list) + 1 if cata_list else 1))
 
 
-        # Calculate results, handle max_len=0 case
-        ts_accuracy = "{:.4f}".format(check_list[0][0] / max_len) if max_len > 0 and len(check_list) > 0 and len(check_list[0]) > 0 else "0.0000"
-        pi_accuracy = "{:.4f}".format(check_list[1][0] / max_len) if max_len > 0 and len(check_list) > 1 and len(check_list[1]) > 0 else "0.0000"
-        cf_accuracy = "{:.4f}".format(check_list[2][0] / max_len) if max_len > 0 and len(check_list) > 2 and len(check_list[2]) > 0 else "0.0000"
-        
+        # Calculate results, handle max_len=0 case, multiply by 100 and format to xx.xx
+        ts_accuracy = (
+            "{:.2f}".format(check_list[0][0] / max_len * 100)
+            if max_len > 0 and len(check_list) > 0 and len(check_list[0]) > 0
+            else "0.00"
+        )
+        pi_accuracy = (
+            "{:.2f}".format(check_list[1][0] / max_len * 100)
+            if max_len > 0 and len(check_list) > 1 and len(check_list[1]) > 0
+            else "0.00"
+        )
+        cf_accuracy = (
+            "{:.2f}".format(check_list[2][0] / max_len * 100)
+            if max_len > 0 and len(check_list) > 2 and len(check_list[2]) > 0
+            else "0.00"
+        )
         data_results[f"{dataset}"] = {
             "Tool Selection": ts_accuracy,
             "Parameter Identification": pi_accuracy,

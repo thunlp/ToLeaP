@@ -174,20 +174,25 @@ def evaluate_function_calls(test_data: List[str], eval_data: List[dict], output_
     with open(invalid_pred_path, "w", encoding="utf-8") as f:
         json.dump(invalid_pred_data, f, indent=4)
 
-    # print(stats["total"])
-    # print(stats["function_correct"])
-    # print(stats["argument_name_correct"])
+    total = stats["total"]
+    fn_corr  = stats["function_correct"]
+    an_corr  = stats["argument_name_correct"]
+    av_corr  = stats["argument_value_correct"]
+
+    # percentages with two decimals
+    def pct(num, denom):
+        return round((num / denom) * 100, 2) if denom > 0 else 0.0
 
     return {
-        "function_accuracy": round(stats["function_correct"] / stats["total"], 4) if stats["total"] > 0 else 0.0,
-        "argument_name_accuracy": round(stats["argument_name_correct"] / stats["total"], 4) if stats["function_correct"] > 0 else 0.0,
-        "argument_value_accuracy": round(stats["argument_value_correct"] / stats["total"], 4) if stats["argument_name_correct"] > 0 else 0.0,
-        "total_samples": stats["total"],
-        "function_correct": stats["function_correct"],
-        "argument_name_correct": stats["argument_name_correct"],
-        "argument_value_correct": stats["argument_value_correct"],
-        "invalid_ground_truth": stats["invalid_gt"],
-        "invalid_predictions": stats["invalid_pred"]
+        "function_accuracy":       pct(fn_corr, total),
+        "argument_name_accuracy":  pct(an_corr, total),
+        "argument_value_accuracy": pct(av_corr, total),
+        # "total_samples":           total,
+        # "function_correct":        fn_corr,
+        # "argument_name_correct":   an_corr,
+        # "argument_value_correct":  av_corr,
+        # "invalid_ground_truth":    stats["invalid_gt"],
+        # "invalid_predictions":     stats["invalid_pred"]
     }
 
 def validate_ground_truth(gt_json):
