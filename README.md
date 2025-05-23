@@ -244,15 +244,10 @@ python apibank_eval.py --model_name meta-llama/Llama-3.1-8B-Instruct
 To evaluate API models, add `--is_api` True.
 
 ## Other Benchmarks
-### SkyThought
-First, set up the environment:
-```
-pip install skythought
-```
-According to the original author's recommendation, you must use datasets==2.21.0. Otherwise, some benchmarks will not run correctly.
 
-Then run:
-```
-bash one-click-sky.sh
-```
-to evaluate all tasks. You can specify models and tasks within the script.
+### SkyThought
+First, install the environment dependencies with `pip install skythought`. As recommended by the original authors, use `datasets==2.21.0`; otherwise, some benchmarks may fail. Then run `bash one-click-sky.sh` to evaluate all tasks. You can customize the models and tasks in the script.
+
+### BoolQ
+Download the dataset from [GitHub](https://github.com/google-research-datasets/boolean-questions) and place `train.jsonl` in the `data/boolq` directory. Then run `boolq_eval.py` to start the evaluation.
+
