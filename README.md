@@ -251,3 +251,5 @@ First, install the environment dependencies with `pip install skythought`. As re
 ### BoolQ
 Download the dataset from [GitHub](https://github.com/google-research-datasets/boolean-questions) and place `train.jsonl` in the `data/boolq` directory. Then run `boolq_eval.py` to start the evaluation.
 
+### BIG-Bench-Hard
+Download the dataset from [GitHub](https://github.com/suzgunmirac/BIG-Bench-Hard/tree/main/bbh)) and place the json files in the `data/bbh` directory. Then run `bbh_eval.py` to start the evaluation.
