@@ -17,11 +17,15 @@ import os
 import click
 import json
 from typing import List, Dict
+import concurrent.futures
 from rouge_score import rouge_scorer
 
 from utils.llm import LLM, extract_first_json
 
 def create_messages(conversation_data: Dict) -> List[Dict]:
+    """
+    Creates a list of messages from conversation data.
+    """
     messages = []
     for cov in conversation_data: # Dict
         message = []
@@ -31,21 +35,130 @@ def create_messages(conversation_data: Dict) -> List[Dict]:
         messages.append(message)
     return messages
 
+def process_datapath(
+    data_path: str,
+    llm: LLM,
+    model_name: str,
+    is_api: bool,
+    debug_mode: bool
+):
+    """
+    Processes the entire evaluation pipeline for a single data path.
+    This function is designed to be called independently by a thread.
+    """
+    print(f"Starting processing for data path: {data_path}")
+    # Initialize
+    data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
+    tool_path = "../data/taskbench/"
+    tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
+    tool_desc = json.load(open(tool_desc_file, "r"))
+    eval_data = json.load(open(data_path, "r"))
+
+    if debug_mode:
+        eval_data = eval_data[:1]
+        print("[Debug] - in taskbench_eval.py - The first query sample is: ")
+        print(eval_data[0]["conversations"][0]["value"])
+
+    labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
+
+    os.makedirs("../results/taskbench", exist_ok=True)
+    output_path = f"../results/taskbench/{model_name}_{data_split}_results.json"
+    parsed_output_path = f"../results/taskbench/{model_name}_{data_split}_parsed_results.json"
+
+    # Run inference
+    def run_inference():
+        if os.path.exists(output_path):
+            print(f"Loading existing results from {output_path}")
+            results = json.load(open(output_path, "r"))
+        else:
+            print(f"Running inference for {data_split}...")
+            if is_api:
+                messages = create_messages(eval_data)
+                results = llm.batch_generate_chat(messages)
+            else:
+                results = llm.batch_generate_complete(
+                    [{"role": "user", "content": d["conversations"][0]["value"]} for d in eval_data]
+                )
+            json.dump(results, open(output_path, "w"), indent=4)
+        return results
+    
+    if debug_mode:
+        results = run_inference()
+        print("[Debug] - in taskbench_eval.py - The answer is: ")
+        print(results[0]) 
+        raise SystemExit("[Debug] Halting after one sample in debug mode.")
+    else:
+        if not os.path.exists(parsed_output_path):
+            results = run_inference()
+        else:
+            print(f"Loading existing parsed results from {parsed_output_path}")
+            results = json.load(open(output_path, "r"))
+
+    parsed_results = []
+    bad_cases = []
+    for result in results:
+        try:
+            parsed_json = json.loads(extract_first_json(result))
+            normalized_json = {
+                "task_steps": parsed_json.get("task_steps", []),
+                "task_nodes": parsed_json.get("task_nodes", []),
+                "task_links": parsed_json.get("task_links", [])
+            }
+            parsed_results.append(normalized_json)
+        except Exception as e:
+            bad_cases.append(result)
+            parsed_results.append({"task_steps": [], "task_nodes": [], "task_links": []})
+
+    print(f"Total bad cases for {data_split}: {len(bad_cases)}/{len(results)}")
+    json.dump(bad_cases, open(f"../results/taskbench/{model_name}_{data_split}_bad_cases.json", "w"), indent=4)
+
+    rouge_1, rouge_2, name_f1, t_f1, v_f1, link_f1 = evaluate(parsed_results, labels, data_split, tool_desc)
+    
+    result_dict = {
+        "rouge_1": round(rouge_1  * 100, 2),
+        "rouge_2": round(rouge_2  * 100, 2),
+        "name_f1": round(name_f1 * 100, 2),
+        "t_f1":   round(t_f1   * 100, 2),
+        "v_f1":   round(v_f1   * 100, 2),
+        "link_f1":round(link_f1* 100, 2),
+    }
+    print(f"Finished processing for data path: {data_path}")
+    return {data_split: result_dict}
+
+
 @click.command()
-@click.option("--model", type=str, default="gpt-3.5-turbo")
-@click.option("--data_paths", type=list, default=[
-    "../data/taskbench/taskbench_data_dailylifeapis.json",
-    "../data/taskbench/taskbench_data_huggingface.json",
-    "../data/taskbench/taskbench_data_multimedia.json",
-])
-@click.option("--is_api", type=bool, default=False)
-@click.option("--tensor_parallel_size", type=int, default=4)
-@click.option("--batch_size", type=int, default=128)
-@click.option("--max_model_len", type=int, default=4096)
-@click.option("--max_output_tokens", type=int, default=512)
-@click.option("--model_name", type=str)
-def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, batch_size: int, max_model_len: int, max_output_tokens: int, model_name:str):
-    data_results = {}
+@click.option("--model", type=str, default="gpt-3.5-turbo", help="Path or name of the model.")
+@click.option("--data_paths", type=str, 
+              default="../data/taskbench/taskbench_data_dailylifeapis.json,../data/taskbench/taskbench_data_huggingface.json,../data/taskbench/taskbench_data_multimedia.json", 
+              help="Comma-separated list of data paths to evaluate.")
+@click.option("--is_api", type=bool, default=False, help="Whether to use an API for inference.")
+@click.option("--tensor_parallel_size", type=int, default=1, help="Tensor parallel size for vLLM.")
+@click.option("--batch_size", type=int, default=128, help="Batch size for inference.")
+@click.option("--max_model_len", type=int, default=4096, help="Maximum model length.")
+@click.option("--max_output_tokens", type=int, default=512, help="Maximum number of output tokens.")
+@click.option("--model_name", type=str, required=True, help="Name of the model, used for creating result directories.")
+@click.option("--debug", "debug_mode", is_flag=True, default=False, help="Debug mode, runs only one data sample.")
+@click.option("--think_mode", "think_mode", is_flag=True, default=False, help="Enable chain-of-thought mode.")
+@click.option("--think_special_tokens", "think_special_tokens", type=str, default="think", help="Special token used in chain-of-thought mode.")
+@click.option("--multithread", type=int, default=3, help="Number of threads for parallel dataset evaluation. Set to 1 for sequential execution.")
+def main(
+    model: str, 
+    data_paths: str, 
+    is_api: bool, 
+    tensor_parallel_size: int, 
+    batch_size: int, 
+    max_model_len: int, 
+    max_output_tokens: int, 
+    model_name:str, 
+    debug_mode: bool,
+    think_mode: bool,
+    think_special_tokens: str,
+    multithread: int
+    ):
+    """
+    Main function for the TaskBench evaluation script.
+    """
+    all_results = {}
     
     llm = LLM(
         model=model, 
@@ -54,89 +167,37 @@ def main(model: str, data_paths: str, is_api: bool, tensor_parallel_size: int, b
         use_sharegpt_format=False,
         max_input_tokens=max_model_len,
         batch_size=batch_size, 
-        max_output_tokens=max_output_tokens
+        max_output_tokens=max_output_tokens,
+        think_mode=think_mode,
+        think_special_tokens=think_special_tokens,
      )
 
-    for data_path in data_paths:
-        # Initialize
-        data_split = data_path.replace(".json", "").split("/")[-1].split("_")[-1]
-        tool_path = "../data/taskbench/"
-        tool_desc_file = os.path.join(os.path.dirname(tool_path), f"tool_desc_{data_split}.json")
-        tool_desc = json.load(open(tool_desc_file, "r"))
-        eval_data = json.load(open(data_path, "r"))
-        labels = [json.loads(d["conversations"][-1]["value"]) for d in eval_data]
+    # Parse data paths list
+    list_of_data_paths = [path.strip() for path in data_paths.split(',')]
 
-        os.makedirs("../results/taskbench", exist_ok=True)
-        output_path = f"../results/taskbench/{model_name}_{data_split}_results.json"
-        parsed_output_path = f"../results/taskbench/{model_name}_{data_split}_parsed_results.json"
+    if multithread > 1:
+        print(f"Multithreading enabled. Processing data paths in parallel with {multithread} workers...")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=multithread) as executor:
+            future_to_datapath = {
+                executor.submit(process_datapath, path, llm, model_name, is_api, debug_mode): path
+                for path in list_of_data_paths
+            }
 
-        # Run inference
-        def run_inference():
-            if os.path.exists(output_path):
-                results = json.load(open(output_path, "r"))
-            else:
-                if is_api:
-                    messages = create_messages(eval_data)
-                    results = llm.batch_generate_chat(messages)
-                else:
-                    results = llm.batch_generate_complete(
-                        [d["conversations"][0]["value"] for d in eval_data]
-                    )
-                json.dump(results, open(output_path, "w"), indent=4)
-            return results
-
-        if not os.path.exists(parsed_output_path):
-            results = run_inference()
-        else:
-            results = json.load(open(output_path, "r"))
-
-        parsed_results = []
-        bad_cases = []
-        for result in results:
-            try:
-                parsed_json = json.loads(extract_first_json(result))
-                # Initialize with empty lists
-                normalized_json = {
-                    "task_steps": [],
-                    "task_nodes": [],
-                    "task_links": []
-                }
-                
-                # Try to get each field individually
+            for future in concurrent.futures.as_completed(future_to_datapath):
+                path = future_to_datapath[future]
                 try:
-                    normalized_json["task_steps"] = parsed_json.get("task_steps", [])
-                except:
-                    pass
-                    
-                try:
-                    normalized_json["task_nodes"] = parsed_json.get("task_nodes", [])
-                except:
-                    pass
-                    
-                try:
-                    normalized_json["task_links"] = parsed_json.get("task_links", [])
-                except:
-                    pass
-                    
-                parsed_results.append(normalized_json)
-            except Exception as e:
-                bad_cases.append(result)
-                parsed_results.append({"task_steps": [], "task_nodes": [], "task_links": []})
+                    result_dict = future.result()
+                    all_results.update(result_dict)
+                except Exception as exc:
+                    print(f"'{path}' generated an exception: {exc}")
+    else:
+        print("Processing data paths sequentially...")
+        for path in list_of_data_paths:
+            result_dict = process_datapath(path, llm, model_name, is_api, debug_mode)
+            all_results.update(result_dict)
 
-        # print("Bad Cases are those that cannot be parsed as JSON or has none of the required fields.")
-        # print(f"Total bad cases: {len(bad_cases)}/{len(results)}")
-        json.dump(bad_cases, open(f"{model.split('/')[-1]}_{data_split}_bad_cases.json", "w"), indent=4)
-
-        rouge_1, rouge_2, name_f1, t_f1, v_f1, link_f1 = evaluate(parsed_results, labels, data_split, tool_desc)
-        data_results[f"{data_split}"] = {
-                "rouge_1": rouge_1,
-                "rouge_2": rouge_2,
-                "name_f1": name_f1,
-                "t_f1": t_f1,
-                "v_f1": v_f1,
-                "link_f1": link_f1
-        }
-    print(json.dumps(data_results))
+    print("\n--- Final Evaluation Results ---")
+    print(json.dumps(all_results, indent=4))
     
 
 def get_content_type(content):
@@ -316,8 +377,6 @@ def evaluate(predictions, labels, data_split, tool_desc):
         rouge_scores[1] += rouge.score(pred, label)['rouge2'].fmeasure
     rouge_scores[0] /= len(pred_tasksteps)
     rouge_scores[1] /= len(pred_tasksteps)
-    # print("Rouge 1", rouge_scores[0])
-    # print("Rouge 2", rouge_scores[1])
 
     # F1 for task nodes
     name_f1 = 0
@@ -333,11 +392,9 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         name_f1 += f1
     name_f1 /= len(pred_node_names)
-    # print("Name_F1", name_f1)
 
-    # F1 for task args
+    # F1 for task args (names)
     t_f1 = 0
-    v_f1 = 0
     for pred_argname, label_argname in zip(pred_taskargnames, label_taskargnames):
         ground_truth = set([str(name) for name in label_argname])
         prediction = set([str(name) for name in pred_argname])
@@ -350,11 +407,10 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         t_f1 += f1
     t_f1 /= len(pred_taskargnames)
-    # print("t_f1", t_f1)
 
-    # F1 for task args
+    # F1 for task args (values)
+    v_f1 = 0
     for pred_argvalue, label_argvalue in zip(pred_taskargvalues, label_taskargvalues):
-        # import pdb; pdb.set_trace()
         ground_truth = set([str(value) for value in label_argvalue])
         prediction = set([str(value) for value in pred_argvalue])
         true_positive = ground_truth & prediction
@@ -366,7 +422,6 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         v_f1 += f1
     v_f1 /= len(pred_taskargvalues)
-    # print("v_f1", v_f1)
 
     # F1 for task links
     link_f1 = 0
@@ -382,7 +437,7 @@ def evaluate(predictions, labels, data_split, tool_desc):
             f1 = 2 * precision * recall / (precision + recall)
         link_f1 += f1
     link_f1 /= len(pred_tasklinks)
-    # print("edge_f1", link_f1)
+    
     return rouge_scores[0], rouge_scores[1], name_f1, t_f1, v_f1, link_f1
 
 

@@ -43,7 +43,9 @@ def define_arguments_prompted(parser):
     parser.add_argument("--max_model_len", default=4096)
     parser.add_argument("--gpu_memory_utilization", default=0.9)
     parser.add_argument("--batch_size", default=128)
-
+    parser.add_argument("--debug", "debug_mode", is_flag=True, default=False, help="Run in debug mode with only one data sample.")
+    parser.add_argument("--think_mode", "think_mode", is_flag=True, default=False)
+    parser.add_argument("--think_special_tokens", "think_special_tokens", type=str, default="think")
     
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -85,7 +87,9 @@ def main(params):
             use_sharegpt_format=False,
             max_input_tokens=params['max_model_len'],
             gpu_memory_utilization=params['gpu_memory_utilization'],
-            batch_size=params['batch_size']
+            batch_size=params['batch_size'],
+            think_mode=params['think_mode'],
+            think_special_tokens=params['think_special_tokens'],
         )
     else:
         model_class = MODELS[params['model_type']](params)

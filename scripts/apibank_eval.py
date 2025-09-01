@@ -289,11 +289,11 @@ def main(model: str, is_api: bool, tensor_parallel_size: int, batch_size: int, m
                 'api_accuracy': correct_api_calls / total_api_calls,
             }
 
-    print(model)
+    output_dict = {}
     for name, res in final_results.items():
-        print(f"===== {name} =====")
-        for k, v in res.items():
-            print(f"{k}: {v}")
+        score_percent = res.get("dialog_score", 0) * 100
+        output_dict[name] = round(score_percent, 2)
+    print(json.dumps(output_dict))
 
 if __name__ == "__main__":
     main()

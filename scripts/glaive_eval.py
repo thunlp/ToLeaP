@@ -174,20 +174,25 @@ def evaluate_function_calls(test_data: List[str], eval_data: List[dict], output_
     with open(invalid_pred_path, "w", encoding="utf-8") as f:
         json.dump(invalid_pred_data, f, indent=4)
 
-    # print(stats["total"])
-    # print(stats["function_correct"])
-    # print(stats["argument_name_correct"])
+    total = stats["total"]
+    fn_corr  = stats["function_correct"]
+    an_corr  = stats["argument_name_correct"]
+    av_corr  = stats["argument_value_correct"]
+
+    # percentages with two decimals
+    def pct(num, denom):
+        return round((num / denom) * 100, 2) if denom > 0 else 0.0
 
     return {
-        "function_accuracy": round(stats["function_correct"] / stats["total"], 4) if stats["total"] > 0 else 0.0,
-        "argument_name_accuracy": round(stats["argument_name_correct"] / stats["total"], 4) if stats["function_correct"] > 0 else 0.0,
-        "argument_value_accuracy": round(stats["argument_value_correct"] / stats["total"], 4) if stats["argument_name_correct"] > 0 else 0.0,
-        "total_samples": stats["total"],
-        "function_correct": stats["function_correct"],
-        "argument_name_correct": stats["argument_name_correct"],
-        "argument_value_correct": stats["argument_value_correct"],
-        "invalid_ground_truth": stats["invalid_gt"],
-        "invalid_predictions": stats["invalid_pred"]
+        "function_accuracy":       pct(fn_corr, total),
+        "argument_name_accuracy":  pct(an_corr, total),
+        "argument_value_accuracy": pct(av_corr, total),
+        # "total_samples":           total,
+        # "function_correct":        fn_corr,
+        # "argument_name_correct":   an_corr,
+        # "argument_value_correct":  av_corr,
+        # "invalid_ground_truth":    stats["invalid_gt"],
+        # "invalid_predictions":     stats["invalid_pred"]
     }
 
 def validate_ground_truth(gt_json):
@@ -216,6 +221,9 @@ def validate_prediction(pred_json):
 @click.option("--gpu_memory_utilization", type=float, default=0.9)
 @click.option("--max_model_len", type=int, default=4096)
 @click.option("--max_output_tokens", type=int, default=512)
+@click.option("--debug", "debug_mode", is_flag=True, default=False, help="Run in debug mode with only one data sample.")
+@click.option("--think_mode", "think_mode", is_flag=True, default=False)
+@click.option("--think_special_tokens", "think_special_tokens", type=str, default="think")
 def main(
     model: str, 
     is_api: bool, 
@@ -224,6 +232,9 @@ def main(
     max_model_len: int,
     gpu_memory_utilization: float,
     max_output_tokens: int,
+    debug_mode: bool,
+    think_mode: bool,
+    think_special_tokens: str
     ):
     ### Setup
     model_name = os.path.basename(model)
@@ -237,6 +248,11 @@ def main(
     if not os.path.exists(f"../results/glaive/{model_name}"):
         os.makedirs(f"../results/glaive/{model_name}")
 
+    if debug_mode:
+        eval_data = eval_data[:1]
+        print("[Debug] - in rotbench_eval.py - The first query sample is: ")
+        print(eval_data[0]["conversations"][0]["value"])
+
     if not os.path.exists(output_path):
         llm = LLM(
             model=model, 
@@ -245,17 +261,16 @@ def main(
             use_sharegpt_format=False,
             max_input_tokens=max_model_len,
             batch_size=batch_size, 
-            max_output_tokens=max_output_tokens
+            max_output_tokens=max_output_tokens,
+            think_mode=think_mode,
+            think_special_tokens=think_special_tokens,
         )
 
     def run_inference() -> List:
         if os.path.exists(output_path): # if exists
             with open(output_path, "r") as f:
                 results = json.load(f)
-        else: # if not   
-            # for ed in eval_data:
-            #     print(str(ed["system"] + "\n" + ed["conversations"][0]["value"]))
-            #     assert False     
+        else: 
             results = llm.batch_generate_complete(
                 [str(ed["system"] + "\n" + ed["conversations"][0]["value"]) for ed in eval_data]
             )
@@ -263,7 +278,12 @@ def main(
                 json.dump(results, f, indent=4)
     
     print("*"*10 + "INFERENCE" + "*"*10)
-    run_inference()
+    test_data = run_inference()
+
+    if debug_mode:
+        print("[Debug] - in rotbench_eval.py - The answer is: ")
+        print(test_data[0]) 
+        assert False
 
     ### Evaluation
     with open(output_path, encoding="utf-8") as f:

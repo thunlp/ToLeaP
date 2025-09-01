@@ -6,12 +6,12 @@
 # Copyright (c) THUNLP, Tsinghua University. All rights reserved.
 # See LICENSE file in the project root for license information.
 
-MODEL_PATH=$1
-IS_API=$2
-GPU_NUM=$3
-BATCH_SIZE=$4
-INPUT_TOKENS=$5
-OUTPUT_TOKENS=$6
+MODEL_PATH=${1:-"meta-llama/Llama-3.1-8B-Instruct"}
+IS_API=${2:-"False"}
+GPU_NUM=${3:-4}
+BATCH_SIZE=${4:-64}
+INPUT_TOKENS=${5:-4096}
+OUTPUT_TOKENS=${6:-512}
 if [ -n "$7" ]; then
   MODEL_NAME="$7"
 else
@@ -71,8 +71,6 @@ export OPENAI_API_KEY="your-open-api-kei"
 python injecagent_eval.py \
     --model_type $MODEL_TYPE \
     --model_name $MODEL_PATH \
-    --tensor_parallel_size $GPU_NUM \
-    --batch_size $BATCH_SIZE \
     --use_cach | grep -oP '\{.*\}' >> $OUTPUT_FILE
 
 echo "********** doing evaluation by $MODEL_NAME on T-Eval benchmark **********"
@@ -94,3 +92,6 @@ bfcl generate \
     --num-threads 1
 bfcl evaluate \
     --model $MODEL_PATH
+
+sed -i "/^{[[:space:]]*'[^']\+'[[:space:]]*\(,[[:space:]]*'[^']\+'\)*[[:space:]]*}$/d" "$OUTPUT_FILE"
+sed -i "/\"level\":/d; /\"custom_ops\":/d" "$OUTPUT_FILE"
